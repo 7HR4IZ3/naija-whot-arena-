@@ -150,14 +150,17 @@ export function GameTable() {
       const penaltyType = card.value === 2 || card.value === 5 ? card.value : null;
       const pendingPenalty = penaltyType ? current.pendingPenalty + card.value : 0;
       const message = card.value === 1 ? "Hold On — you go again." : card.value === 8 ? "Suspension — Amaka loses their turn." : card.value === 14 ? "General Market — Amaka picks one." : penaltyType ? `${ACTIONS[card.value as 2 | 5].name}! Amaka must defend or pick up ${pendingPenalty}.` : `You played ${card.value} ${SUIT_META[card.suit].short}.`;
+      const marketResult = card.value === 14 ? drawCards(current.market, 1) : { drawn: [], market: current.market };
       return {
         ...current,
         hand,
+        opponentHand: marketResult.drawn.length ? [...current.opponentHand, ...marketResult.drawn] : current.opponentHand,
+        market: marketResult.market,
         discard,
         calledSuit: null,
         penaltyType,
         pendingPenalty,
-        turn: card.value === 1 || card.value === 8 ? "player" : "opponent",
+        turn: card.value === 1 || card.value === 8 || card.value === 14 ? "player" : "opponent",
         message,
       };
     });
