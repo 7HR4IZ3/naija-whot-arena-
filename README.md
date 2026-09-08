@@ -2,7 +2,7 @@
 
 Neo-brutalist online Nigerian Whot platform built with Next.js, Supabase, and Vercel.
 
-Repository: `7HR4IZ3/naija-whot-arena`
+Repository: `7HR4IZ3/naija-whot-arena-`
 
 ## What is included
 
@@ -42,7 +42,7 @@ The schema includes profiles, rooms, room players, tournaments, tournament playe
 
 ## Deploy
 
-The app is designed for Vercel with the Next.js App Router. Import `7HR4IZ3/naija-whot-arena` into Vercel, set the three environment variables above, and deploy. Every GitHub push can then create a preview deployment.
+The app is designed for Vercel with the Next.js App Router. Import `7HR4IZ3/naija-whot-arena-` into Vercel, set the three environment variables above, and deploy. Every GitHub push can then create a preview deployment.
 
 ## Whot rules used by the default preset
 
