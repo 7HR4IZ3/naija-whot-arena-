@@ -19,6 +19,15 @@ export const SUIT_META: Record<Suit, { label: string; short: string; color: stri
 
 export const SUITS: PlayingSuit[] = ["circle", "triangle", "cross", "square", "star"];
 
+export const CARD_ART: Record<Suit, string> = {
+  circle: "/cards/card-circle.svg",
+  triangle: "/cards/card-triangle.svg",
+  cross: "/cards/card-cross.svg",
+  square: "/cards/card-square.svg",
+  star: "/cards/card-star.svg",
+  whot: "/cards/card-whot.svg",
+};
+
 export const NUMBERS: Record<PlayingSuit, number[]> = {
   circle: [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14],
   triangle: [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14],

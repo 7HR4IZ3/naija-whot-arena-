@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, CalendarDays, Check, Crown, Play, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { MOCK_TOURNAMENTS } from "@/lib/mock-data";
+import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, normalizeRoomSettings, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { joinTournament } from "@/lib/supabase/actions";
 
@@ -22,13 +23,15 @@ export function TournamentRoom({ id }: { id: string }) {
   const router = useRouter();
   const configured = isSupabaseConfigured();
   const mock = MOCK_TOURNAMENTS.find((tournament) => tournament.id === id);
+  const initialSettings = normalizeRoomSettings(mock ? { ...DEFAULT_ROOM_SETTINGS, gameType: "knockout" } : DEFAULT_ROOM_SETTINGS);
   const [tournament, setTournament] = useState<TournamentInfo>({
     name: mock?.title ?? "Demo tournament",
     max_players: mock?.players.match(/\d+/)?.[0] ? Number(mock.players.match(/\d+/)?.[0]) : 32,
     starts_at: "2026-09-12T21:00:00.000Z",
     status: mock?.status === "Full" ? "full" : "registration",
-    rule_config: { stackActions: true, timer: true, knockout: true },
+    rule_config: initialSettings,
   });
+  const [settings, setSettings] = useState<RoomSettings>(initialSettings);
   const [players, setPlayers] = useState<string[]>(demoPlayers.slice(0, mock?.status === "Full" ? 5 : 3));
   const [displayName, setDisplayName] = useState("Guest Player");
   const [joined, setJoined] = useState(false);
@@ -46,6 +49,7 @@ export function TournamentRoom({ id }: { id: string }) {
         return;
       }
       setTournament(data as TournamentInfo);
+      setSettings(normalizeRoomSettings(data.rule_config));
       const { data: roster } = await supabase.from("tournament_players").select("display_name").eq("tournament_id", id).order("seed");
       if (active && roster) setPlayers(roster.map((player: { display_name: string }) => player.display_name));
     };
@@ -99,7 +103,7 @@ export function TournamentRoom({ id }: { id: string }) {
         <section className="lobby-card">
           <div className="tag-row">
             <span className="tag tag-lime"><CalendarDays size={11} /> {startLabel}</span>
-            <span className="tag"><Crown size={11} /> {tournament.rule_config.knockout ? "Knockout" : "Round robin"}</span>
+            <span className="tag"><Crown size={11} /> {gameTypeLabel(settings.gameType, settings.targetScore)}</span>
             <span className="tag"><Users size={11} /> {isFull ? "Full" : `${tournament.max_players - players.length} seats left`}</span>
           </div>
           <h2 style={{ marginTop: 25 }}>The roster</h2>
@@ -121,10 +125,10 @@ export function TournamentRoom({ id }: { id: string }) {
         <aside className="side-note">
           <h3>Published rules</h3>
           <ul>
-            <li>{tournament.rule_config.knockout ? "100-point knockout scoring" : "Highest score wins"}</li>
-            <li>{tournament.rule_config.stackActions ? "2s and 5s can be stacked" : "No stacking"}</li>
-            <li>{tournament.rule_config.timer ? "10-second turn timer" : "No turn timer"}</li>
-            <li>Six-card opening deal</li>
+            <li>{gameTypeLabel(settings.gameType, settings.targetScore)}</li>
+            <li>{settings.pickTwoEnabled ? `2 Pick Two · ${penaltyModeLabel(settings.pickTwoMode)}` : "2 Pick Two disabled"}</li>
+            <li>{settings.pickThreeEnabled ? `5 Pick Three · ${penaltyModeLabel(settings.pickThreeMode)}` : "5 Pick Three disabled"}</li>
+            <li>{settings.initialHand}-card opening deal · {settings.turnTimer === "off" ? "untimed" : `${settings.turnTimer}-second timer`}</li>
           </ul>
           <button className="button button-primary" disabled={!joined && !isFull} onClick={start} style={{ marginTop: 18, width: "100%" }} type="button"><Play size={16} fill="currentColor" /> Host starts bracket</button>
           <p className="form-helper" style={{ marginTop: 11 }}>Demo mode lets you preview the bracket. A synced event is host-controlled.</p>

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, Crown, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { RoomSettingsPanel } from "@/components/room-settings";
+import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from "@/lib/rules";
 import { createTournament } from "@/lib/supabase/actions";
 
 export function TournamentCreate() {
@@ -11,9 +13,7 @@ export function TournamentCreate() {
   const [name, setName] = useState("Lagos After Dark");
   const [startsAt, setStartsAt] = useState("2026-09-12T21:00");
   const [maxPlayers, setMaxPlayers] = useState("32");
-  const [stackActions, setStackActions] = useState(true);
-  const [timer, setTimer] = useState(true);
-  const [knockout, setKnockout] = useState(true);
+  const [settings, setSettings] = useState<RoomSettings>({ ...DEFAULT_ROOM_SETTINGS, gameType: "knockout" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,7 +25,7 @@ export function TournamentCreate() {
       name: name.trim() || "New Whot Tournament",
       startsAt,
       maxPlayers: Number(maxPlayers),
-      rules: { stackActions, timer, knockout, initialHand: 6, drawMode: "one", registration: "open" },
+      rules: { ...settings, registration: "open" },
     });
     setBusy(false);
     if (result.error || !result.id) {
@@ -70,15 +70,8 @@ export function TournamentCreate() {
                 <option value="64">64 players</option>
               </select>
             </div>
-            <div className="form-field full">
-              <label>Rules published with the event</label>
-              <div className="form-checkboxes">
-                <label className="check-chip"><input checked={stackActions} onChange={(event) => setStackActions(event.target.checked)} type="checkbox" /> Stack 2 + 5</label>
-                <label className="check-chip"><input checked={timer} onChange={(event) => setTimer(event.target.checked)} type="checkbox" /> 10 sec timer</label>
-                <label className="check-chip"><input checked={knockout} onChange={(event) => setKnockout(event.target.checked)} type="checkbox" /> Knockout scoring</label>
-              </div>
-            </div>
           </div>
+          <RoomSettingsPanel description="Publish a clear ruleset with the registration page so every player joins with the same expectations." idPrefix="tournament" onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))} settings={settings} title="Published rules" />
           <div className="form-actions">
             <button className="button button-primary" disabled={busy} type="submit"><Crown size={16} /> {busy ? "Publishing…" : "Publish tournament"}</button>
           </div>

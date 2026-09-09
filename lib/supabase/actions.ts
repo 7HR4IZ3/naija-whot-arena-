@@ -37,7 +37,7 @@ export async function createRoom(input: RoomCreateInput) {
       max_players: input.maxPlayers,
       rule_config: input.rules,
       status: "waiting",
-      mode: "classic",
+      mode: input.rules.gameType === "knockout" ? "knockout" : "classic",
     })
     .select("id, code")
     .single();

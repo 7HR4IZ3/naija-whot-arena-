@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Copy, Info, Play, RefreshCw, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, normalizeRoomSettings, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type RosterPlayer = { id: string; display_name: string; seat: number; ready: boolean };
@@ -22,6 +23,7 @@ export function TableRoom({ code }: { code: string }) {
   const [hostId, setHostId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [roomName, setRoomName] = useState("Private Whot Table");
+  const [settings, setSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const normalizedCode = code.toUpperCase();
@@ -34,7 +36,7 @@ export function TableRoom({ code }: { code: string }) {
 
     const loadRoom = async () => {
       const { data: userData } = await supabase.auth.getUser();
-      const { data: room, error: roomError } = await supabase.from("rooms").select("id, name, host_id, status").eq("code", normalizedCode).single();
+      const { data: room, error: roomError } = await supabase.from("rooms").select("id, name, host_id, status, rule_config").eq("code", normalizedCode).single();
       if (!active) return;
       if (roomError || !room) {
         setError("This synced room could not be found. Showing the local preview instead.");
@@ -44,6 +46,7 @@ export function TableRoom({ code }: { code: string }) {
       setHostId(room.host_id);
       setUserId(userData.user?.id ?? null);
       setRoomName(room.name);
+      setSettings(normalizeRoomSettings(room.rule_config));
       if (room.status === "running") router.push(`/game?room=${normalizedCode}`);
 
       const { data: roster, error: rosterError } = await supabase
@@ -67,6 +70,19 @@ export function TableRoom({ code }: { code: string }) {
       if (channel) void supabase.removeChannel(channel);
     };
   }, [configured, normalizedCode, router]);
+
+  useEffect(() => {
+    if (configured) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = window.sessionStorage.getItem(`whot:room:${normalizedCode}:settings`);
+        if (stored) setSettings(normalizeRoomSettings(JSON.parse(stored)));
+      } catch {
+        setSettings(DEFAULT_ROOM_SETTINGS);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [configured, normalizedCode]);
 
   const readyCount = players.filter((player) => player.ready).length;
   const isHost = !configured || Boolean(userId && hostId && userId === hostId);
@@ -147,14 +163,16 @@ export function TableRoom({ code }: { code: string }) {
         <aside className="side-note">
           <h3>Table rules</h3>
           <ul>
-            <li>Six cards to each player.</li>
+            <li>{gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand} cards to each player.</li>
             <li>Match the top card by number or symbol.</li>
-            <li>Stack 2s and 5s when defended.</li>
-            <li>Call a symbol after playing Whot.</li>
-            <li>First player with no cards wins the round.</li>
+            <li>{settings.pickTwoEnabled ? `2 Pick Two · ${penaltyModeLabel(settings.pickTwoMode)}.` : "2 Pick Two is disabled."}</li>
+            <li>{settings.pickThreeEnabled ? `5 Pick Three · ${penaltyModeLabel(settings.pickThreeMode)}.` : "5 Pick Three is disabled."}</li>
+            <li>{settings.suspensionEnabled ? "8 Suspension is enabled." : "8 Suspension is disabled."}</li>
+            <li>{settings.whotEnabled ? settings.whotCallsSuit ? "Whot calls a symbol." : "Whot is wild without a call." : "Whot cards are disabled."}</li>
+            <li>{settings.drawMode === "one" ? "Draw one and pass." : "Draw until playable."}</li>
           </ul>
           <div className="tag-row" style={{ marginTop: 18 }}>
-            <span className="tag tag-lime">Classic</span>
+            <span className="tag tag-lime">{gameTypeLabel(settings.gameType, settings.targetScore)}</span>
             <span className="tag">{configured ? "Realtime" : "Local preview"}</span>
           </div>
         </aside>

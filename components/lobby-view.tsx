@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, Clipboard, Copy, LockKeyhole, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { RoomSettingsPanel } from "@/components/room-settings";
+import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from "@/lib/rules";
 import { createRoom, joinRoom } from "@/lib/supabase/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -14,9 +16,7 @@ export function LobbyView() {
   const [maxPlayers, setMaxPlayers] = useState("5");
   const [displayName, setDisplayName] = useState("Guest Player");
   const [code, setCode] = useState(searchParams.get("code")?.toUpperCase() ?? "");
-  const [stackActions, setStackActions] = useState(true);
-  const [timer, setTimer] = useState(true);
-  const [knockout, setKnockout] = useState(false);
+  const [settings, setSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
   const [error, setError] = useState("");
 
@@ -27,12 +27,17 @@ export function LobbyView() {
     const result = await createRoom({
       name: roomName.trim() || "Private Whot Table",
       maxPlayers: Number(maxPlayers),
-      rules: { stackActions, timer, knockout, initialHand: 6, drawMode: "one" },
+      rules: settings,
     });
     setBusy(null);
     if (result.error || !result.code) {
       setError(result.error ?? "Could not create that table.");
       return;
+    }
+    try {
+      window.sessionStorage.setItem(`whot:room:${result.code}:settings`, JSON.stringify(settings));
+    } catch {
+      // Session storage is only a demo-mode convenience; synced rooms use Supabase.
     }
     router.push(`/table/${result.code}`);
   };
@@ -82,18 +87,11 @@ export function LobbyView() {
               </select>
             </div>
             <div className="form-field">
-              <label>Format</label>
-              <p className="form-helper">Classic round · six-card deal · one-card draw</p>
-            </div>
-            <div className="form-field full">
-              <label>House rules</label>
-              <div className="form-checkboxes">
-                <label className="check-chip"><input checked={stackActions} onChange={(event) => setStackActions(event.target.checked)} type="checkbox" /> Stack 2 + 5</label>
-                <label className="check-chip"><input checked={timer} onChange={(event) => setTimer(event.target.checked)} type="checkbox" /> 10 sec timer</label>
-                <label className="check-chip"><input checked={knockout} onChange={(event) => setKnockout(event.target.checked)} type="checkbox" /> 100-point knockout</label>
-              </div>
+              <label>Settings preview</label>
+              <p className="form-helper">{settings.gameType === "knockout" ? "Knockout scoring" : "Classic round"} · {settings.initialHand}-card deal · {settings.drawMode === "one" ? "draw one" : "draw until playable"}</p>
             </div>
           </div>
+          <RoomSettingsPanel idPrefix="room" onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))} settings={settings} />
           <div className="form-actions">
             <button className="button button-primary" disabled={busy !== null} type="submit">
               <LockKeyhole size={16} />

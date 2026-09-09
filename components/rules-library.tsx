@@ -90,7 +90,7 @@ function DeckRules({ deck }: { deck: ReturnType<typeof buildDeck> }) {
         <div className="card-gallery" aria-label="All 54 cards in the standard deck">
           {deck.map((card) => <CardFace card={card} key={card.id} size="sm" />)}
         </div>
-        <p className="form-helper" style={{ marginTop: 15 }}>These are CSS-rendered, original card assets: each card is generated from the same manifest used by the game engine, so the visual deck and playable deck cannot drift apart.</p>
+        <p className="form-helper" style={{ marginTop: 15 }}>These card faces use the adapted Whot SVG artwork shipped in the app, while the live number and action labels come from the same manifest used by the game engine.</p>
       </div>
       <div className="rules-section">
         <h3>Scoring reference</h3>
@@ -201,6 +201,7 @@ function Sources() {
     ["Naija Whot · App Store", "Mobile rules and feature reference", "https://apps.apple.com/ng/app/naija-whot/id1493269750"],
     ["Whot.online", "Online play and rules reference", "https://www.whot.online/"],
     ["Wikimedia Commons · Whot", "Public card-art reference category", "https://commons.wikimedia.org/wiki/Category:Whot%21"],
+    ["mykeels/whot-cards · GitHub", "SVG card-art source used with attribution", "https://github.com/mykeels/whot-cards"],
   ];
 
   return (

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 186.3 255.5">
+  <style>.st0{fill:#F4F4F2;stroke:#000}.st1{fill:#7D1228}.st2{fill:none}.st3{fill:#791026}</style>
+  <path class="st0" d="M182.9 237.7c0 7.8-6.3 14.2-14.2 14.2H18.5c-7.8 0-14.2-6.3-14.2-14.2V16.6c0-7.8 6.3-14.2 14.2-14.2h150.2c7.8 0 14.2 6.3 14.2 14.2v221.1Z"/>
+  <circle class="st1" cx="97.8" cy="127.8" r="57.2"/>
+  <circle class="st1" cx="23.6" cy="54.5" r="9.3"/>
+  <text x="15.9" y="31.6" class="st3" font-family="Arial,sans-serif" font-size="26.9">X</text>
+  <circle class="st1" cx="155.1" cy="198.2" r="9.3"/>
+  <text x="147.4" y="236.7" class="st3" font-family="Arial,sans-serif" font-size="26.9">X</text>
+</svg>

@@ -1,5 +1,6 @@
-import type { CSSProperties, MouseEventHandler } from "react";
-import { actionLabel, type Card, SUIT_META } from "@/lib/cards";
+import Image from "next/image";
+import type { MouseEventHandler } from "react";
+import { actionLabel, CARD_ART, type Card, SUIT_META } from "@/lib/cards";
 
 type CardFaceProps = {
   card: Card;
@@ -20,7 +21,6 @@ export function CardFace({
   onClick,
   className = "",
 }: CardFaceProps) {
-  const style = { "--card-accent": SUIT_META[card.suit].color } as CSSProperties;
   const classes = [
     "whot-card",
     `card-${card.suit}`,
@@ -33,7 +33,7 @@ export function CardFace({
 
   if (hidden) {
     return (
-      <div className={classes} style={style} aria-label="Face down card">
+      <div className={classes} aria-label="Face down card">
         <span>W!</span>
       </div>
     );
@@ -43,21 +43,28 @@ export function CardFace({
 
   if (onClick) {
     return (
-      <button className={classes} style={style} onClick={onClick} disabled={disabled} aria-label={label} type="button">
-        <span className="card-number">{card.value}</span>
-        <span className="card-symbol-word">{SUIT_META[card.suit].short}</span>
-        {card.suit === "whot" && <span className="card-score">W!</span>}
-        <span className="card-number-bottom">{card.value}</span>
+      <button className={classes} onClick={onClick} disabled={disabled} aria-label={label} type="button">
+        <CardVisual card={card} />
       </button>
     );
   }
 
   return (
-    <div className={classes} style={style} aria-label={label} role="img">
-      <span className="card-number">{card.value}</span>
-      <span className="card-symbol-word">{SUIT_META[card.suit].short}</span>
-      {card.suit === "whot" && <span className="card-score">W!</span>}
-      <span className="card-number-bottom">{card.value}</span>
+    <div className={classes} aria-label={label} role="img">
+      <CardVisual card={card} />
     </div>
+  );
+}
+
+function CardVisual({ card }: { card: Card }) {
+  return (
+    <>
+      <span className={`card-art-frame${card.suit === "whot" ? " card-art-whot" : ""}`}>
+        <Image alt="" className="card-art-image" fill sizes="(max-width: 760px) 82px, 156px" src={CARD_ART[card.suit]} unoptimized />
+      </span>
+      <span className="card-number card-corner">{card.value}</span>
+      {card.suit === "whot" && <span className="card-score">W!</span>}
+      <span className="card-number-bottom card-corner">{card.value}</span>
+    </>
   );
 }

@@ -10,7 +10,7 @@ Repository: `7HR4IZ3/naija-whot-arena-`
 - Private table flow with a six-character room code, player roster, ready states, host start, and Supabase Realtime hooks.
 - Tournament creation and registration flow with public rules, player caps, waiting roster, and host start.
 - Rules library covering the core turn loop, card manifest, action cards, scoring, tournament flow, and common house-rule variants.
-- Original CSS-rendered card faces for every card in the standard deck. The same manifest powers the card gallery and game engine.
+- Real-life-inspired SVG card faces for every card in the standard deck, adapted from the attributed `mykeels/whot-cards` artwork. The same manifest powers the card gallery and game engine.
 - Demo-first behavior: the UI works without environment variables; Supabase enables auth, room persistence, and realtime when configured.
 
 ## Run locally
@@ -59,3 +59,4 @@ Research references:
 - [Naija Whot · App Store](https://apps.apple.com/ng/app/naija-whot/id1493269750)
 - [Whot.online](https://www.whot.online/)
 - [Wikimedia Commons · Whot!](https://commons.wikimedia.org/wiki/Category:Whot%21)
+- [mykeels/whot-cards · SVG card-art source](https://github.com/mykeels/whot-cards)
