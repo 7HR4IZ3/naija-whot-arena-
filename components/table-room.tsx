@@ -23,6 +23,7 @@ export function TableRoom({ code }: { code: string }) {
   const [hostId, setHostId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [roomName, setRoomName] = useState("Private Whot Table");
+  const [maxPlayers, setMaxPlayers] = useState(5);
   const [settings, setSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +37,7 @@ export function TableRoom({ code }: { code: string }) {
 
     const loadRoom = async () => {
       const { data: userData } = await supabase.auth.getUser();
-      const { data: room, error: roomError } = await supabase.from("rooms").select("id, name, host_id, status, rule_config").eq("code", normalizedCode).single();
+      const { data: room, error: roomError } = await supabase.from("rooms").select("id, name, host_id, status, max_players, rule_config").eq("code", normalizedCode).single();
       if (!active) return;
       if (roomError || !room) {
         setError("This synced room could not be found. Showing the local preview instead.");
@@ -46,6 +47,7 @@ export function TableRoom({ code }: { code: string }) {
       setHostId(room.host_id);
       setUserId(userData.user?.id ?? null);
       setRoomName(room.name);
+      setMaxPlayers(room.max_players);
       setSettings(normalizeRoomSettings(room.rule_config));
       if (room.status === "running") router.push(`/game?room=${normalizedCode}`);
 
@@ -76,8 +78,14 @@ export function TableRoom({ code }: { code: string }) {
     const timer = window.setTimeout(() => {
       try {
         const stored = window.sessionStorage.getItem(`whot:room:${normalizedCode}:settings`);
+        const storedMaxPlayers = Number(window.sessionStorage.getItem(`whot:room:${normalizedCode}:maxPlayers`));
+        if (storedMaxPlayers >= 2 && storedMaxPlayers <= 5) {
+          setMaxPlayers(storedMaxPlayers);
+          setPlayers(demoRoster.slice(0, storedMaxPlayers));
+        }
         if (stored) setSettings(normalizeRoomSettings(JSON.parse(stored)));
       } catch {
+        setMaxPlayers(5);
         setSettings(DEFAULT_ROOM_SETTINGS);
       }
     }, 0);
@@ -134,7 +142,7 @@ export function TableRoom({ code }: { code: string }) {
       <div className="form-shell">
         <section className="lobby-card">
           <div className="deck-panel-top">
-            <h2 style={{ margin: 0 }}>Players <span className="muted">{players.length}/5</span></h2>
+            <h2 style={{ margin: 0 }}>Players <span className="muted">{players.length}/{maxPlayers}</span></h2>
             <span className="tag tag-lime"><Users size={12} /> {readyCount} ready</span>
           </div>
           <div className="room-code-block">

@@ -36,6 +36,7 @@ export function LobbyView() {
     }
     try {
       window.sessionStorage.setItem(`whot:room:${result.code}:settings`, JSON.stringify(settings));
+      window.sessionStorage.setItem(`whot:room:${result.code}:maxPlayers`, maxPlayers);
     } catch {
       // Session storage is only a demo-mode convenience; synced rooms use Supabase.
     }
