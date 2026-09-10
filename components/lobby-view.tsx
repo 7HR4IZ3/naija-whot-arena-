@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowLeft, Clipboard, Copy, LockKeyhole, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RoomSettingsPanel } from "@/components/room-settings";
+import { ScreenHeader } from "@/components/screen-header";
 import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from "@/lib/rules";
 import { createRoom, joinRoom } from "@/lib/supabase/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -57,21 +58,20 @@ export function LobbyView() {
   };
 
   return (
-    <main className="page-wrap">
+    <main className="page-wrap page-builder">
       <div className="topline">
         <Link href="/play"><ArrowLeft size={14} /> BACK TO PLAY</Link>
         <strong>TABLE BUILDER</strong>
       </div>
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">Private table</span>
-          <h1>Set the table.<br />Send the code.</h1>
-        </div>
-        <p>Choose your house rules, then share the code with your crew. The host can start once everyone is ready.</p>
-      </header>
+      <ScreenHeader
+        action={<Link className="button button-secondary" href="/play">Leave builder</Link>}
+        description="Choose your house rules, then share the code with your crew. The host can start once everyone is ready."
+        kicker="Private table"
+        title={<>Set the table.<br />Send the code.</>}
+      />
 
-      <div className="form-shell">
-        <form className="form-panel" onSubmit={handleCreate}>
+      <div className="lobby-grid builder-grid">
+        <form className="panel form-panel lobby-panel builder-form" onSubmit={handleCreate}>
           <h2>Create a room</h2>
           <div className="form-grid">
             <div className="form-field full">
@@ -101,7 +101,8 @@ export function LobbyView() {
           </div>
         </form>
 
-        <aside className="side-note">
+        <aside className="panel mini-note builder-note">
+          <p className="screen-kicker">The waiting room</p>
           <h3>How the lobby works</h3>
           <p>When you create a table, Whot Arena gives you a six-character code and a waiting room.</p>
           <ul>

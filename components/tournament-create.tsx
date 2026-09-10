@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, Crown, Info } from "lucide-react";
+import { ArrowLeft, Crown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { RoomSettingsPanel } from "@/components/room-settings";
+import { ScreenHeader } from "@/components/screen-header";
 import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from "@/lib/rules";
 import { createTournament } from "@/lib/supabase/actions";
 
@@ -36,21 +37,26 @@ export function TournamentCreate() {
   };
 
   return (
-    <main className="page-wrap">
+    <main className="page-wrap page-builder">
       <div className="topline">
         <Link href="/tournaments"><ArrowLeft size={14} /> BACK TO EVENTS</Link>
         <strong>EVENT BUILDER</strong>
       </div>
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">Host an event</span>
-          <h1>Make it<br /><span style={{ color: "var(--pink)" }}>official.</span></h1>
-        </div>
-        <p>Create an open registration, publish the rules, and let players join before the bracket locks.</p>
-      </header>
+      <ScreenHeader
+        action={<Link className="button button-secondary" href="/tournaments">Back to tournaments</Link>}
+        description="Create an open registration, publish the rules, and let players join before the bracket locks."
+        kicker="Host an event"
+        title={<>Make it<br /><span className="accent-word">official.</span></>}
+      />
 
-      <div className="form-shell">
-        <form className="form-panel" onSubmit={submit}>
+      <div className="settings-layout builder-settings-layout">
+        <article className="panel settings-intro">
+          <p className="screen-kicker">Registration first</p>
+          <h2>Give the table a reason to show up.</h2>
+          <p>Set the format, publish the house rules, and give players a clear place to gather before the bracket begins.</p>
+        </article>
+
+        <form className="panel settings-form form-panel builder-form" onSubmit={submit}>
           <h2>Tournament details</h2>
           <div className="form-grid">
             <div className="form-field full">
@@ -76,18 +82,12 @@ export function TournamentCreate() {
             <button className="button button-primary" disabled={busy} type="submit"><Crown size={16} /> {busy ? "Publishing…" : "Publish tournament"}</button>
           </div>
         </form>
-
-        <aside className="side-note">
-          <h3>What players see</h3>
-          <ul>
-            <li>Event name and start time.</li>
-            <li>Rules before they join.</li>
-            <li>Live player count and seats left.</li>
-            <li>Waiting room when registration closes.</li>
-          </ul>
-          <div className="rules-callout" style={{ marginTop: 20, background: "var(--yellow)" }}><Info size={14} style={{ verticalAlign: "-2px" }} /> Your event starts in registration mode. The host controls the final start.</div>
-        </aside>
       </div>
+
+      <section className="home-footnote builder-footnote" aria-label="Tournament registration details">
+        <article className="panel mini-note"><p><strong>What players see.</strong><br />Event name, start time, rules, live player count, and seats left.</p></article>
+        <article className="panel mini-note"><p><strong>Registration stays open.</strong><br />Your event starts in registration mode. The host controls the final start.</p></article>
+      </section>
 
       {error && <div className="alert">{error}</div>}
     </main>

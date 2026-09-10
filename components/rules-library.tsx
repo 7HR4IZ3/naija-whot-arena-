@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ExternalLink, Info } from "lucide-react";
 import { CardFace } from "@/components/card-face";
+import { ScreenHeader } from "@/components/screen-header";
 import { ACTIONS, buildDeck, CARD_MANIFEST, SUIT_META, SUITS } from "@/lib/cards";
 
 const sections = ["Core rules", "The deck", "Power cards", "Modes", "House rules", "Sources"] as const;
@@ -13,18 +15,17 @@ export function RulesLibrary() {
   const deck = useMemo(() => buildDeck(), []);
 
   return (
-    <main className="page-wrap">
+    <main className="page-wrap page-rules">
       <div className="topline">
         <span>WHOT ARENA / RULES</span>
         <strong>THE HOUSE RULES LIBRARY</strong>
       </div>
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">Learn the game</span>
-          <h1>Same deck.<br /><span style={{ background: "var(--yellow)", padding: "0 8px" }}>Different energy.</span></h1>
-        </div>
-        <p>Whot is played in many Nigerian homes and tables. This library separates the widely shared core from the rules that should be agreed before a match.</p>
-      </header>
+      <ScreenHeader
+        action={<Link className="button button-secondary" href="/play">Back to play</Link>}
+        description="Whot is played in many Nigerian homes and tables. This library separates the widely shared core from the rules that should be agreed before a match."
+        kicker="How to play"
+        title={<>Same deck.<br /><span className="accent-word">Different energy.</span></>}
+      />
 
       <div className="rules-layout">
         <nav className="rules-index" aria-label="Rules sections">
@@ -33,14 +34,16 @@ export function RulesLibrary() {
           ))}
         </nav>
 
-        <div className="rules-content">
-          {active === "Core rules" && <CoreRules />}
-          {active === "The deck" && <DeckRules deck={deck} />}
-          {active === "Power cards" && <PowerCards />}
-          {active === "Modes" && <Modes />}
-          {active === "House rules" && <HouseRules />}
-          {active === "Sources" && <Sources />}
-        </div>
+        <section className="panel rules-content-panel">
+          <div className="rules-content">
+            {active === "Core rules" && <CoreRules />}
+            {active === "The deck" && <DeckRules deck={deck} />}
+            {active === "Power cards" && <PowerCards />}
+            {active === "Modes" && <Modes />}
+            {active === "House rules" && <HouseRules />}
+            {active === "Sources" && <Sources />}
+          </div>
+        </section>
       </div>
     </main>
   );

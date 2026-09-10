@@ -8,6 +8,7 @@ import { MOCK_TOURNAMENTS } from "@/lib/mock-data";
 import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, normalizeRoomSettings, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { joinTournament } from "@/lib/supabase/actions";
+import { ScreenHeader } from "@/components/screen-header";
 
 type TournamentInfo = {
   name: string;
@@ -82,36 +83,35 @@ export function TournamentRoom({ id }: { id: string }) {
     router.push(`/game?tournament=${id}`);
   };
 
-  const startLabel = new Date(tournament.starts_at).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
+  const startLabel = new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Lagos" }).format(new Date(tournament.starts_at));
   const isFull = players.length >= tournament.max_players || tournament.status === "full";
 
   return (
-    <main className="page-wrap">
+    <main className="page-wrap page-lobby">
       <div className="topline">
         <Link href="/tournaments"><ArrowLeft size={14} /> BACK TO EVENTS</Link>
         <strong>EVENT ROOM</strong>
       </div>
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">{tournament.status === "registration" ? "Registration open" : "Event room"}</span>
-          <h1>{tournament.name}.<br /><span style={{ color: "var(--pink)" }}>{players.length}/{tournament.max_players} in.</span></h1>
-        </div>
-        <p>See the rules, join the roster, and wait for the host to start the bracket.</p>
-      </header>
+      <ScreenHeader
+        action={<Link className="button button-secondary" href="/tournaments">Leave event</Link>}
+        description="See the rules, join the roster, and wait for the host to start the bracket."
+        kicker={tournament.status === "registration" ? "Registration open" : "Event room"}
+        title={<>{tournament.name}.</>}
+      />
 
-      <div className="form-shell">
-        <section className="lobby-card">
+      <div className="lobby-grid event-room-grid">
+        <section className="panel lobby-panel lobby-card">
           <div className="tag-row">
             <span className="tag tag-lime"><CalendarDays size={11} /> {startLabel}</span>
             <span className="tag"><Crown size={11} /> {gameTypeLabel(settings.gameType, settings.targetScore)}</span>
             <span className="tag"><Users size={11} /> {isFull ? "Full" : `${tournament.max_players - players.length} seats left`}</span>
           </div>
-          <h2 style={{ marginTop: 25 }}>The roster</h2>
+          <div className="room-title-line event-roster-heading"><div><h2>The roster</h2><p className="screen-subtitle">{players.length} of {tournament.max_players} players registered</p></div><span className="status-badge">{isFull ? "Roster full" : "Registration open"}</span></div>
           <div className="roster">
             {players.map((player, index) => (
               <div className="roster-row" key={`${player}-${index}`}>
-                <div className="roster-person"><span className="avatar-dot" style={{ marginLeft: 0, background: index % 2 ? "var(--blue)" : "var(--yellow)" }}>{player.slice(0, 1).toUpperCase()}</span>{player}</div>
-                {index === 0 && <span className="ready-state">Seed 01</span>}
+                <div className="roster-person"><span className="player-avatar" style={{ background: index % 2 ? "var(--blue)" : "var(--yellow)" }}>{player.slice(0, 1).toUpperCase()}</span><span><strong className="player-name">{player}</strong><small className="player-meta">{index === 0 ? "Host" : `Seed ${String(index + 1).padStart(2, "0")}`}</small></span></div>
+                {index === 0 && <span className="ready">Seed 01</span>}
               </div>
             ))}
           </div>
@@ -122,7 +122,7 @@ export function TournamentRoom({ id }: { id: string }) {
           </div>
         </section>
 
-        <aside className="side-note">
+        <aside className="panel rules-panel event-rules-panel">
           <h3>Published rules</h3>
           <ul>
             <li>{gameTypeLabel(settings.gameType, settings.targetScore)}</li>

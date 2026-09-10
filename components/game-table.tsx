@@ -357,29 +357,34 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         <div className="game-statuses"><span className="tag tag-lime">{game.winner ? `${game.winner} won` : game.turn === "player" ? "Your turn" : "Amaka's turn"}</span><span className="tag">{formatLabel} · {settings.initialHand} cards</span><span className="tag">{timerLabel}</span><Link className="button button-quiet" href="/play"><ArrowLeft size={14} /> Leave</Link></div>
       </header>
 
-      <div className="game-main">
-        <div className="felt">
+      <div className="game-main game-layout">
+        <section aria-label="Live Whot table" className="felt table-field">
           <div className="turn-indicator">{game.winner ? "ROUND COMPLETE" : game.turn === "player" ? "YOUR TURN" : "AMAKA IS THINKING"}</div>
-          <div className="player-seat top"><span className="seat-avatar">AM</span><span>AMAKA · {game.opponentHand.length} cards</span></div>
-          <div className="player-seat left"><span className="seat-avatar">KE</span><span>KELECHI · OUT</span></div>
-          <div className="player-seat right"><span className="seat-avatar">MI</span><span>MIDE · OUT</span></div>
-          <div className="table-center">
+          <div className="player-seat seat seat-top top"><span className="seat-avatar player-avatar">AM</span><span>Amaka · {game.opponentHand.length} cards</span></div>
+          <div className="player-seat seat seat-left left"><span className="seat-avatar player-avatar">KE</span><span>Kelechi · out</span></div>
+          <div className="player-seat seat seat-right right active"><span className="seat-avatar player-avatar">You</span><span>You · your turn</span></div>
+          <div className="table-center center-piles">
             <div className="pile"><CardFace card={game.market[game.market.length - 1] ?? createCard("whot", 20)} hidden /><span className="pile-label">Market · {game.market.length}</span></div>
             <div className="pile"><CardFace card={topCard(game)} size="lg" /><span className="pile-label">Discard pile</span></div>
           </div>
-        </div>
+          <div className="turn-note"><strong>{game.winner ? "Round complete." : game.turn === "player" ? "Your turn." : "Amaka is thinking."}</strong></div>
+        </section>
 
         <section className="hand-bar">
-          <div className="hand-head"><h2>Your hand <span className="tag tag-coral" style={{ marginLeft: 7 }}>{game.hand.length} cards</span></h2><span>{game.pendingPenalty ? `Penalty active · ${game.pendingPenalty} cards` : game.calledSuit ? `Called symbol · ${SUIT_META[game.calledSuit].short}` : "Click a legal card to play"}</span></div>
+          <div className="hand-head"><span className="hand-label">Your hand<br /><strong>{game.hand.length} cards</strong></span><span>{game.pendingPenalty ? `Penalty active · ${game.pendingPenalty} cards` : game.calledSuit ? `Called symbol · ${SUIT_META[game.calledSuit].short}` : "Click a legal card to play"}</span></div>
           <div className="hand-cards">
             {game.hand.map((card, index) => <CardFace card={card} key={card.id} onClick={() => playCard(index)} selected={selected === index} />)}
           </div>
-          <div className="button-row" style={{ justifyContent: "center", marginTop: 5 }}>
-            <button className="button button-primary" disabled={game.turn !== "player" || game.awaitingSuit || Boolean(game.winner)} onClick={draw} type="button">Draw {game.pendingPenalty ? game.pendingPenalty : 1}</button>
-            <button className="button button-secondary" onClick={reset} type="button"><RotateCcw size={15} /> New round</button>
-          </div>
-          {game.awaitingSuit && <div className="choice-row" style={{ justifyContent: "center" }}>{SUITS.map((suit) => <button className="choice-button" key={suit} onClick={() => chooseSuit(suit)} type="button">Call {SUIT_META[suit].short}</button>)}</div>}
         </section>
+
+        <div className="game-actions">
+          <p>{game.awaitingSuit ? "Choose the symbol Whot should call." : "Play a matching shape or draw one card."}</p>
+          <div className="action-group">
+            {game.awaitingSuit && <div className="choice-row">{SUITS.map((suit) => <button className="choice-button" key={suit} onClick={() => chooseSuit(suit)} type="button">Call {SUIT_META[suit].short}</button>)}</div>}
+            <button className="button button-secondary" disabled={game.turn !== "player" || game.awaitingSuit || Boolean(game.winner)} onClick={draw} type="button">Draw {game.pendingPenalty ? game.pendingPenalty : 1}</button>
+            <button className="button button-primary" onClick={reset} type="button"><RotateCcw size={15} /> New round</button>
+          </div>
+        </div>
 
         <div className="game-bottom-grid">
           <div className="game-message"><strong>Table call</strong>{game.message}</div>

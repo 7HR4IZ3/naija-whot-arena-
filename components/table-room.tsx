@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Copy, Info, Play, RefreshCw, Users } from "lucide-react";
+import { ArrowLeft, Check, Info, Play, RefreshCw, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, normalizeRoomSettings, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
+import { ScreenHeader } from "@/components/screen-header";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type RosterPlayer = { id: string; display_name: string; seat: number; ready: boolean };
@@ -126,37 +127,37 @@ export function TableRoom({ code }: { code: string }) {
   };
 
   return (
-    <main className="page-wrap">
+    <main className="page-wrap page-lobby">
       <div className="topline">
         <Link href="/play"><ArrowLeft size={14} /> BACK TO PLAY</Link>
         <strong>WAITING ROOM / {normalizedCode}</strong>
       </div>
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">{configured ? "Synced table" : "Demo table"}</span>
-          <h1>{roomName}.<br /><span style={{ color: "var(--pink)" }}>Who&apos;s ready?</span></h1>
-        </div>
-        <p>Invite the table, check the house rules, and start when every seat is locked in.</p>
-      </header>
+      <ScreenHeader
+        action={<Link className="button button-secondary" href="/play">Leave room</Link>}
+        description="Share the code, choose your seat, and start when the table is ready."
+        kicker={`${configured ? "Synced table" : "Demo table"} / ${normalizedCode}`}
+        title={<>{roomName}.</>}
+      />
 
-      <div className="form-shell">
-        <section className="lobby-card">
-          <div className="deck-panel-top">
-            <h2 style={{ margin: 0 }}>Players <span className="muted">{players.length}/{maxPlayers}</span></h2>
-            <span className="tag tag-lime"><Users size={12} /> {readyCount} ready</span>
+      <div className="lobby-grid">
+        <section className="panel lobby-panel lobby-card">
+          <div className="room-title-line">
+            <div><h2>Players</h2><p className="screen-subtitle">{players.length} of {maxPlayers} seats filled</p></div>
+            <span className="status-badge"><Users size={12} /> {readyCount} ready</span>
           </div>
-          <div className="room-code-block">
-            <div><span>Share this table code</span><strong>{normalizedCode}</strong></div>
-            <button className="button button-secondary" onClick={copyCode} type="button"><Copy size={15} /> {copied ? "Copied" : "Copy"}</button>
+          <div className="code-strip">
+            <span className="code-label">Share this table code</span>
+            <span className="code">{normalizedCode}</span>
+            <button className="text-link code-copy" onClick={copyCode} type="button">{copied ? "Copied" : "Copy"}</button>
           </div>
           <div className="roster" style={{ marginTop: 20 }}>
             {players.map((player, index) => (
               <div className="roster-row" key={player.id}>
                 <div className="roster-person">
-                  <span className="avatar-dot" style={{ marginLeft: 0, background: index === 0 ? "var(--yellow)" : index === 1 ? "var(--blue)" : "var(--pink)" }}>{player.display_name.slice(0, 1).toUpperCase()}</span>
-                  <span>{player.display_name}{player.id === userId || (!configured && player.id === "you") ? " (you)" : ""}</span>
+                  <span className="player-avatar" style={{ background: index === 0 ? "var(--yellow)" : index === 1 ? "var(--blue)" : "var(--pink)" }}>{player.display_name.slice(0, 1).toUpperCase()}</span>
+                  <span><strong className="player-name">{player.display_name}{player.id === userId || (!configured && player.id === "you") ? " (you)" : ""}</strong><small className="player-meta">{index === 0 ? "Host" : `Seat ${index + 1}`}</small></span>
                 </div>
-                <span className={player.ready ? "ready-state" : "muted"}>{player.ready ? "Ready" : "Not ready"}</span>
+                <span className={player.ready ? "ready" : "waiting"}>{player.ready ? "Ready" : "Not ready"}</span>
               </div>
             ))}
           </div>
@@ -168,8 +169,9 @@ export function TableRoom({ code }: { code: string }) {
           {readyCount < 2 && players.length >= 2 && <p className="waiting-note"><RefreshCw size={15} /> Waiting for at least two ready players.</p>}
         </section>
 
-        <aside className="side-note">
+        <aside className="panel rules-panel">
           <h3>Table rules</h3>
+          <p>Clear enough to settle a disagreement before it starts.</p>
           <ul>
             <li>{gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand} cards to each player.</li>
             <li>Match the top card by number or symbol.</li>

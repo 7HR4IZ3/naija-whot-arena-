@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, LockKeyhole, Trophy, Users, Zap } from "lucide-react";
+import { ArrowRight, LockKeyhole, Trophy, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ScreenHeader } from "@/components/screen-header";
 
 type Mode = "quick" | "private" | "tournament";
 
@@ -30,48 +31,41 @@ export function PlayHub() {
   };
 
   return (
-    <main className="page-wrap">
+    <main className="page-wrap page-play">
       <div className="topline">
         <span>WHOT ARENA / PLAY</span>
-        <strong>CHOOSE YOUR CHAOS</strong>
+        <strong>CHOOSE YOUR TABLE</strong>
       </div>
-      <header className="page-header">
-        <div>
-          <span className="eyebrow">Three ways to deal</span>
-          <h1>Pick a mode.<br />Make a move.</h1>
-        </div>
-        <p>All modes use the same 54-card Nigerian Whot deck. The difference is who is around the table and how serious the score gets.</p>
-      </header>
 
-      <div className="mode-grid">
+      <ScreenHeader
+        action={<button className="button button-primary" onClick={startSelected} type="button">Start selected mode <ArrowRight size={15} /></button>}
+        description="All modes use the same 54-card Nigerian Whot deck. Pick the kind of table you want, then make your move."
+        kicker="Three ways to deal"
+        title={<>Pick a mode.<br />Make a move.</>}
+      />
+
+      <section className="mode-grid" aria-label="Game modes">
         {modes.map(({ id, title, description, icon: Icon, detail }) => (
           <button
+            aria-pressed={selected === id}
             className={`mode-card${selected === id ? " selected" : ""}`}
             key={id}
             onClick={() => setSelected(id)}
             type="button"
-            style={{ textAlign: "left" }}
           >
-            <span className="mode-icon"><Icon size={22} strokeWidth={3} /></span>
+            <span className="mode-icon"><Icon size={19} strokeWidth={1.8} /></span>
             <h2>{title}</h2>
             <p>{description}</p>
             <span className="mode-meta">{detail}</span>
           </button>
         ))}
-      </div>
+      </section>
 
-      <div className="button-row">
-        <button className="button button-primary" onClick={startSelected} type="button">
-          Start {selected === "quick" ? "quick match" : selected === "private" ? "private table" : "tournament"}
-          <ArrowRight size={16} />
-        </button>
-        <span className="muted" style={{ alignSelf: "center" }}>No account needed for the local demo.</span>
-      </div>
-
-      <section className="join-panel">
+      <section className="join-panel" aria-labelledby="join-code-heading">
         <div>
-          <h2>Got a table code?</h2>
-          <p>Enter the six-character code from your host and sit down.</p>
+          <p className="screen-kicker">Already invited?</p>
+          <h2 id="join-code-heading">Got a table code?</h2>
+          <p>Enter the code from your host and sit down.</p>
         </div>
         <form className="join-form" onSubmit={joinByCode}>
           <label className="sr-only" htmlFor="play-code">Table code</label>
@@ -80,11 +74,10 @@ export function PlayHub() {
         </form>
       </section>
 
-      <div className="stats-strip">
-        <div className="stat-cell"><span className="stat-value">2–5</span><span className="stat-label">Players per table</span></div>
-        <div className="stat-cell"><span className="stat-value">10s</span><span className="stat-label">Optional turn timer</span></div>
-        <div className="stat-cell"><span className="stat-value"><Users size={27} strokeWidth={3} /></span><span className="stat-label">Public or private</span></div>
-      </div>
+      <section className="home-footnote play-footnote" aria-label="Play mode details">
+        <article className="panel mini-note"><p><strong>Quick match</strong><br />Classic rules, fast queue, no setup.</p></article>
+        <article className="panel mini-note"><p><strong>Private or public</strong><br />Create a room, share the code, and wait together.</p></article>
+      </section>
     </main>
   );
 }
