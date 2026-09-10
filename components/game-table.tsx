@@ -361,8 +361,6 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         <section aria-label="Live Whot table" className="felt table-field">
           <div className="turn-indicator">{game.winner ? "ROUND COMPLETE" : game.turn === "player" ? "YOUR TURN" : "AMAKA IS THINKING"}</div>
           <div className="player-seat seat seat-top top"><span className="seat-avatar player-avatar">AM</span><span>Amaka · {game.opponentHand.length} cards</span></div>
-          <div className="player-seat seat seat-left left"><span className="seat-avatar player-avatar">KE</span><span>Kelechi · out</span></div>
-          <div className="player-seat seat seat-right right active"><span className="seat-avatar player-avatar">You</span><span>You · your turn</span></div>
           <div className="table-center center-piles">
             <div className="pile"><CardFace card={game.market[game.market.length - 1] ?? createCard("whot", 20)} hidden /><span className="pile-label">Market · {game.market.length}</span></div>
             <div className="pile"><CardFace card={topCard(game)} size="lg" /><span className="pile-label">Discard pile</span></div>
@@ -387,7 +385,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         </div>
 
         <div className="game-bottom-grid">
-          <div className="game-message"><strong>Table call</strong>{game.message}</div>
+          <div className="game-message" role="status" aria-live="polite"><strong>Table call</strong>{game.message}</div>
           <aside className="game-message"><strong>Quick help</strong><span><BookOpen size={13} style={{ verticalAlign: "-2px" }} /> Match number or symbol. {settings.whotEnabled ? "Whot is wild." : "Whot is disabled."}</span><br /><span><CircleHelp size={13} style={{ verticalAlign: "-2px" }} /> Need the full reference? <Link href="/rules" style={{ textDecoration: "underline" }}>Open rules</Link></span></aside>
         </div>
       </div>

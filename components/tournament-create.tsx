@@ -44,9 +44,9 @@ export function TournamentCreate() {
       </div>
       <ScreenHeader
         action={<Link className="button button-secondary" href="/tournaments">Back to tournaments</Link>}
-        description="Create an open registration, publish the rules, and let players join before the bracket locks."
+        description="Give your event a name, pick a time, and invite the competition."
         kicker="Host an event"
-        title={<>Make it<br /><span className="accent-word">official.</span></>}
+        title="Something worth showing up for."
       />
 
       <div className="settings-layout builder-settings-layout">
@@ -57,7 +57,7 @@ export function TournamentCreate() {
         </article>
 
         <form className="panel settings-form form-panel builder-form" onSubmit={submit}>
-          <h2>Tournament details</h2>
+          <p className="screen-kicker">01 · Event details</p><h2>The first invitation.</h2>
           <div className="form-grid">
             <div className="form-field full">
               <label htmlFor="tournament-name">Event name</label>

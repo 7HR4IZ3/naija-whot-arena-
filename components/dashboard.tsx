@@ -1,75 +1,32 @@
 import Link from "next/link";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight, Users, Trophy, BookOpen } from "lucide-react";
 import { CardFace } from "@/components/card-face";
-import { ScreenHeader } from "@/components/screen-header";
 import { createCard } from "@/lib/cards";
-import { MOCK_ROOMS } from "@/lib/mock-data";
-
-function roomPath(name: string) {
-  return `/table/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-}
 
 export function Dashboard() {
-  return (
-    <main className="page-wrap page-home">
-      <div className="topline">
-        <span>WHOT ARENA / HOME</span>
-        <strong>3 TABLES OPEN</strong>
+  return <main className="page-wrap page-home">
+    <section className="welcome-hero">
+      <div className="welcome-copy">
+        <p className="screen-kicker"><span className="tiny-suits" aria-hidden="true">● ▲ ✚</span> A familiar game. A fresh table.</p>
+        <h1>A little friendly<br /><em>competition.</em></h1>
+        <p>Your favourite Nigerian card game, with room for everyone. Bring your people. Make the rules. Play one more round.</p>
+        <div className="feature-actions"><Link className="button button-primary" href="/game">Play a practice round <ArrowRight size={17} /></Link><Link className="text-link" href="/play">Ways to play</Link></div>
+        <span className="hero-caption">54 cards. Five shapes. Endless “one last game”.</span>
       </div>
-
-      <ScreenHeader
-        action={<Link className="button button-primary" href="/lobby">Create a table</Link>}
-        description="Start a quick game, create a private room, or find an open seat with people already playing."
-        kicker="Tuesday, 10 September"
-        title="Pick a table."
-      />
-
-      <section className="home-grid" aria-label="Play options">
-        <article className="panel feature-panel">
-          <p className="screen-kicker">Quick match</p>
-          <h2>Find your next round.</h2>
-          <p>Join a table with the classic rules, or set up the exact way your crew plays at home.</p>
-          <div className="feature-actions">
-            <Link className="button button-primary" href="/play"><Play size={15} fill="currentColor" /> Find a game</Link>
-            <Link className="button button-secondary" href="/lobby">Join with code</Link>
-          </div>
-          <div className="hero-cards" aria-label="Whot cards">
-            <CardFace card={createCard("circle", 8)} className="hero-card" size="sm" />
-            <CardFace card={createCard("star", 5)} className="hero-card" size="sm" />
-            <CardFace card={createCard("whot", 20)} className="hero-card" size="sm" />
-          </div>
-        </article>
-
-        <article className="panel list-panel">
-          <div className="panel-heading">
-            <h2>Open rooms</h2>
-            <Link className="text-link" href="/play">View all</Link>
-          </div>
-          <div className="room-list">
-            {MOCK_ROOMS.map((room) => (
-              <div className="room-row" key={room.name}>
-                <div>
-                  <p className="room-name">{room.name}</p>
-                  <p className="room-meta">{room.tags.join(" · ")}</p>
-                </div>
-                <span className="room-count">{room.players} / {room.maxPlayers}</span>
-                <Link className="text-link" href={roomPath(room.name)}>Join</Link>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="home-footnote" aria-label="Whot Arena highlights">
-        <article className="panel mini-note">
-          <p><strong>Your table, your house rules.</strong><br />Choose which action cards are active, whether draws stack, and how the winner is decided.</p>
-          <Link className="text-link" href="/lobby">Set up a table <ArrowRight size={13} /></Link>
-        </article>
-        <article className="panel mini-note">
-          <p><strong>54 cards</strong><br />Five shapes, five Whot cards, one familiar table.</p>
-          <Link className="text-link" href="/rules">Learn the deck <ArrowRight size={13} /></Link>
-        </article>
-      </section>
-    </main>
-  );
+      <div className="deck-scene" aria-label="Classic burgundy Whot playing cards">
+        <div className="scene-ring" /><span className="scene-label">THE ORIGINAL KIND OF FUN</span>
+        <div className="display-deck"><CardFace card={createCard("circle", 2)} size="lg" /><CardFace card={createCard("whot", 20)} size="lg" /><CardFace card={createCard("star", 5)} size="lg" /></div>
+        <span className="scene-bottom">Made for the way we play.</span>
+      </div>
+    </section>
+    <section className="home-paths" aria-labelledby="your-table-heading">
+      <div className="section-heading"><div><p className="screen-kicker">Make yourself at home</p><h2 id="your-table-heading">There’s a seat for you.</h2></div><span className="muted">Choose your kind of game</span></div>
+      <div className="path-grid">
+        <Link className="path-card" href="/lobby"><span className="path-icon"><Users size={22} /></span><h3>Play with your people</h3><p>Create a room, choose the house rules, and send an invite code.</p><span className="path-cta">Create a table <ArrowRight size={16} /></span></Link>
+        <Link className="path-card" href="/tournaments"><span className="path-icon rose"><Trophy size={22} /></span><h3>A little more at stake</h3><p>Bring the whole crew together for a friendly tournament.</p><span className="path-cta">Explore tournaments <ArrowRight size={16} /></span></Link>
+        <Link className="path-card" href="/rules"><span className="path-icon sand"><BookOpen size={22} /></span><h3>Rusty? No wahala.</h3><p>Meet the deck and brush up on the calls before your first deal.</p><span className="path-cta">Learn to play <ArrowRight size={16} /></span></Link>
+      </div>
+    </section>
+    <footer className="home-footer"><span>Whot Arena · A place to play together.</span><span>Circle. Triangle. Cross. Square. Star.</span></footer>
+  </main>;
 }

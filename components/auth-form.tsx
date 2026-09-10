@@ -36,9 +36,9 @@ export function AuthForm() {
 
       <ScreenHeader
         action={<Link className="button button-secondary" href="/"><ArrowLeft size={14} /> Back home</Link>}
-        description="Sign in to create synced rooms, join tournaments, and keep your table identity across devices."
-        kicker="Your table, wherever you are"
-        title={<>Stay in the<br /><span className="accent-word">game.</span></>}
+        description="One familiar place for your rooms, your people, and your next round."
+        kicker="Your seat is waiting"
+        title="Make yourself at home."
       />
 
       <div className="auth-layout">
@@ -46,7 +46,7 @@ export function AuthForm() {
           <p className="screen-kicker">Magic link sign in</p>
           <h2>Welcome back.</h2>
           {!configured ? (
-            <div className="rules-callout"><strong>Demo mode is active.</strong> Add your Supabase URL and anon key to enable magic-link auth and realtime lobbies. You can still play the local match now.</div>
+            <div className="rules-callout"><strong>You can play as a guest.</strong> Account sign-in and synced rooms aren’t connected yet. Enjoy a practice round while we get your seat ready.<br /><Link className="text-link" href="/game">Play a practice round →</Link></div>
           ) : (
             <form onSubmit={signIn}>
               <label htmlFor="auth-email">Email address</label>

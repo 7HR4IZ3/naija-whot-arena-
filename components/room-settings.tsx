@@ -33,10 +33,10 @@ export function RoomSettingsPanel({
       <div className="settings-body">
         <p className="settings-intro">{description} Set the exact behaviour for 2 Pick Two, 5 Pick Three, 8 Suspension, and every optional power card.</p>
 
-        <div className="settings-section">
-          <div className="settings-section-heading">
+        <details className="settings-section" open>
+          <summary className="settings-section-heading">
             <div><h3>Match format</h3><p>Choose the shape of the round and how quickly turns move.</p></div>
-          </div>
+          </summary>
           <div className="settings-grid">
             <div className="form-field">
               <label htmlFor={`${idPrefix}-game-type`}>Game type</label>
@@ -83,35 +83,35 @@ export function RoomSettingsPanel({
               </div>
             </div>
           </div>
-        </div>
+        </details>
 
-        <div className="settings-section">
-          <div className="settings-section-heading">
+        <details className="settings-section">
+          <summary className="settings-section-heading">
             <div><h3>Core switches</h3><p>Decide which calls and scoring conventions this room uses.</p></div>
-          </div>
+          </summary>
           <div className="form-checkboxes">
             <label className="check-chip check-chip-toggle"><input checked={settings.endCalls} onChange={(event) => onChange({ endCalls: event.target.checked })} type="checkbox" /> Semi-last / last calls</label>
             <label className="check-chip check-chip-toggle"><input checked={settings.starDouble} onChange={(event) => onChange({ starDouble: event.target.checked })} type="checkbox" /> Star cards count double</label>
             <label className="check-chip check-chip-toggle"><input checked={settings.whotCallsSuit} disabled={!settings.whotEnabled} onChange={(event) => onChange({ whotCallsSuit: event.target.checked })} type="checkbox" /> Whot calls a symbol</label>
           </div>
-        </div>
+        </details>
 
-        <div className="settings-section">
-          <div className="settings-section-heading">
+        <details className="settings-section">
+          <summary className="settings-section-heading">
             <div><h3>Power cards</h3><p>Turn individual actions on or off. Disabled cards still match by their printed number or symbol.</p></div>
-          </div>
+          </summary>
           <div className="settings-power-grid">
             <label className="check-chip check-chip-toggle"><input checked={settings.holdOnEnabled} onChange={(event) => onChange({ holdOnEnabled: event.target.checked })} type="checkbox" /> <strong>1</strong> Hold On</label>
             <label className="check-chip check-chip-toggle"><input checked={settings.suspensionEnabled} onChange={(event) => onChange({ suspensionEnabled: event.target.checked })} type="checkbox" /> <strong>8</strong> Suspension</label>
             <label className="check-chip check-chip-toggle"><input checked={settings.generalMarketEnabled} onChange={(event) => onChange({ generalMarketEnabled: event.target.checked })} type="checkbox" /> <strong>14</strong> General Market</label>
             <label className="check-chip check-chip-toggle"><input checked={settings.whotEnabled} onChange={(event) => onChange({ whotEnabled: event.target.checked, whotCallsSuit: event.target.checked ? settings.whotCallsSuit : false })} type="checkbox" /> <strong>20</strong> Whot / Crown</label>
           </div>
-        </div>
+        </details>
 
-        <div className="settings-section">
-          <div className="settings-section-heading">
+        <details className="settings-section">
+          <summary className="settings-section-heading">
             <div><h3>Draw penalties</h3><p>“Block + clear” lets the next player answer a penalty card and cancel the current draw.</p></div>
-          </div>
+          </summary>
           <div className="settings-penalty-list">
             <PenaltySetting
               description="Next player draws two cards."
@@ -132,7 +132,7 @@ export function RoomSettingsPanel({
               onModeChange={(pickThreeMode) => onChange({ pickThreeMode })}
             />
           </div>
-        </div>
+        </details>
 
         <div className="settings-footnote"><strong>Current preset:</strong> {gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.pickTwoEnabled ? penaltyModeLabel(settings.pickTwoMode) : "2 disabled"} · {settings.pickThreeEnabled ? penaltyModeLabel(settings.pickThreeMode) : "5 disabled"}.</div>
       </div>

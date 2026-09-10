@@ -29,9 +29,9 @@ export function TournamentHub() {
 
       <ScreenHeader
         action={<Link className="button button-primary" href="/tournaments/new"><Plus size={15} /> Create tournament</Link>}
-        description="Join before the first deal, watch the roster fill up, then battle through the bracket. Tournament settings are visible before you commit."
+        description="Find your next friendly rivalry. Browse the events or bring everyone together for your own."
         kicker="Community play"
-        title={<>Find your <span className="accent-word">bracket.</span></>}
+        title="Good company. Great competition."
       />
 
       <div className="events-layout">
@@ -39,7 +39,7 @@ export function TournamentHub() {
           <div className="panel-heading events-heading">
             <div>
               <p className="screen-kicker">Registration</p>
-              <h2 id="open-tournaments-heading">Open tournaments</h2>
+              <h2 id="open-tournaments-heading">Around the arena</h2>
             </div>
             <Link className="text-link" href="/rules">Tournament rules</Link>
           </div>
@@ -67,7 +67,7 @@ export function TournamentHub() {
                 <article className="event-row" key={tournament.id}>
                   <div className="event-copy">
                     <p className="event-name">{tournament.title}</p>
-                    <p className="event-meta">{tournament.description} · {tournament.players}</p>
+                    <p className="event-meta">{tournament.description} · {tournament.players} · Demo event</p>
                     <div className="tag-row event-tags">
                       <span className="tag"><CalendarDays size={11} /> {tournament.time}</span>
                       <span className="tag"><Trophy size={11} /> {tournament.prize}</span>

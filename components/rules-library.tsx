@@ -22,15 +22,15 @@ export function RulesLibrary() {
       </div>
       <ScreenHeader
         action={<Link className="button button-secondary" href="/play">Back to play</Link>}
-        description="Whot is played in many Nigerian homes and tables. This library separates the widely shared core from the rules that should be agreed before a match."
+        description="The familiar shapes, the special calls, and the little rules every household plays differently."
         kicker="How to play"
-        title={<>Same deck.<br /><span className="accent-word">Different energy.</span></>}
+        title="A little refresher."
       />
 
       <div className="rules-layout">
         <nav className="rules-index" aria-label="Rules sections">
           {sections.map((section) => (
-            <button className={active === section ? "active" : ""} key={section} onClick={() => setActive(section)} type="button">{section}</button>
+            <button aria-pressed={active === section} className={active === section ? "active" : ""} key={section} onClick={() => setActive(section)} type="button">{section}</button>
           ))}
         </nav>
 
@@ -83,7 +83,7 @@ function DeckRules({ deck }: { deck: ReturnType<typeof buildDeck> }) {
         <table className="deck-table">
           <thead><tr><th>Suit</th><th>Cards</th><th>Count</th><th>Visual meaning</th></tr></thead>
           <tbody>
-            {SUITS.map((suit) => <tr key={suit}><td>{SUIT_META[suit].label}</td><td>{CARD_MANIFEST[suit].join(", ")}</td><td>{CARD_MANIFEST[suit].length}</td><td>{SUIT_META[suit].short} shape, colour-coded in Arena</td></tr>)}
+            {SUITS.map((suit) => <tr key={suit}><td>{SUIT_META[suit].label}</td><td>{CARD_MANIFEST[suit].join(", ")}</td><td>{CARD_MANIFEST[suit].length}</td><td>{SUIT_META[suit].short} shape in traditional burgundy</td></tr>)}
             <tr><td>Whot / Crown</td><td>20 × 5</td><td>5</td><td>Wild; choose the next symbol</td></tr>
           </tbody>
         </table>
@@ -93,7 +93,7 @@ function DeckRules({ deck }: { deck: ReturnType<typeof buildDeck> }) {
         <div className="card-gallery" aria-label="All 54 cards in the standard deck">
           {deck.map((card) => <CardFace card={card} key={card.id} size="sm" />)}
         </div>
-        <p className="form-helper" style={{ marginTop: 15 }}>These card faces use the adapted Whot SVG artwork shipped in the app, while the live number and action labels come from the same manifest used by the game engine.</p>
+        <p className="form-helper" style={{ marginTop: 15 }}>Original SVG faces inspired by physical Nigerian Whot cards. Mirrored corner symbols stay readable in a hand; the number inside each star shows its doubled score. <a className="text-link" href="/cards/classic/whot-20.svg" download>Download a sample SVG</a></p>
       </div>
       <div className="rules-section">
         <h3>Scoring reference</h3>
@@ -204,7 +204,7 @@ function Sources() {
     ["Naija Whot · App Store", "Mobile rules and feature reference", "https://apps.apple.com/ng/app/naija-whot/id1493269750"],
     ["Whot.online", "Online play and rules reference", "https://www.whot.online/"],
     ["Wikimedia Commons · Whot", "Public card-art reference category", "https://commons.wikimedia.org/wiki/Category:Whot%21"],
-    ["mykeels/whot-cards · GitHub", "SVG card-art source used with attribution", "https://github.com/mykeels/whot-cards"],
+    ["mykeels/whot-cards · GitHub", "Earlier deck artwork reference; retained in the source archive", "https://github.com/mykeels/whot-cards"],
   ];
 
   return (

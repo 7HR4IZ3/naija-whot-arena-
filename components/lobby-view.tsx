@@ -65,14 +65,14 @@ export function LobbyView() {
       </div>
       <ScreenHeader
         action={<Link className="button button-secondary" href="/play">Leave builder</Link>}
-        description="Choose your house rules, then share the code with your crew. The host can start once everyone is ready."
-        kicker="Private table"
-        title={<>Set the table.<br />Send the code.</>}
+        description="A name, a few house rules, and a code to share. Make yourself at home."
+        kicker="Bring your people"
+        title="Let’s set your table."
       />
 
       <div className="lobby-grid builder-grid">
         <form className="panel form-panel lobby-panel builder-form" onSubmit={handleCreate}>
-          <h2>Create a room</h2>
+          <p className="screen-kicker">01 · The essentials</p><h2>Make it yours.</h2>
           <div className="form-grid">
             <div className="form-field full">
               <label htmlFor="room-name">Table name</label>
@@ -117,7 +117,7 @@ export function LobbyView() {
         </aside>
       </div>
 
-      <section className="join-panel" style={{ marginTop: 34 }}>
+      <section className="join-panel" id="join-table" style={{ marginTop: 34 }}>
         <div>
           <h2>Join someone else&apos;s table</h2>
           <p>{isSupabaseConfigured() ? "Sign in to sync your seat across devices." : "Demo mode is on — you can preview the full waiting room locally."}</p>

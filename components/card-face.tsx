@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { MouseEventHandler } from "react";
-import { actionLabel, CARD_ART, type Card, SUIT_META } from "@/lib/cards";
+import { actionLabel, type Card, SUIT_META } from "@/lib/cards";
 
 type CardFaceProps = {
   card: Card;
@@ -34,7 +34,7 @@ export function CardFace({
   if (hidden) {
     return (
       <div className={classes} aria-label="Face down card">
-        <span>W!</span>
+        <Image src="/cards/classic/back.svg" alt="" width={200} height={300} unoptimized />
       </div>
     );
   }
@@ -58,13 +58,6 @@ export function CardFace({
 
 function CardVisual({ card }: { card: Card }) {
   return (
-    <>
-      <span className={`card-art-frame${card.suit === "whot" ? " card-art-whot" : ""}`}>
-        <Image alt="" className="card-art-image" fill sizes="(max-width: 760px) 82px, 156px" src={CARD_ART[card.suit]} unoptimized />
-      </span>
-      <span className="card-number card-corner">{card.value}</span>
-      {card.suit === "whot" && <span className="card-score">W!</span>}
-      <span className="card-number-bottom card-corner">{card.value}</span>
-    </>
+    <Image alt="" className="card-art-image" width={200} height={300} src={`/cards/classic/${card.suit}-${card.value}.svg`} loading="eager" unoptimized />
   );
 }
