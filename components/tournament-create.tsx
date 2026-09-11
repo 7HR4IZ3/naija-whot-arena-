@@ -12,7 +12,7 @@ import { createTournament } from "@/lib/supabase/actions";
 export function TournamentCreate() {
   const router = useRouter();
   const [name, setName] = useState("Lagos After Dark");
-  const [startsAt, setStartsAt] = useState("2026-09-12T21:00");
+  const [startsAt, setStartsAt] = useState("");
   const [maxPlayers, setMaxPlayers] = useState("32");
   const [settings, setSettings] = useState<RoomSettings>({ ...DEFAULT_ROOM_SETTINGS, gameType: "knockout" });
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,7 @@ export function TournamentCreate() {
     setError("");
     const result = await createTournament({
       name: name.trim() || "New Whot Tournament",
-      startsAt,
+      startsAt: new Date(startsAt).toISOString(),
       maxPlayers: Number(maxPlayers),
       rules: { ...settings, registration: "open" },
     });
@@ -65,7 +65,7 @@ export function TournamentCreate() {
             </div>
             <div className="form-field">
               <label htmlFor="starts-at">Start time</label>
-              <input className="form-input" id="starts-at" onChange={(event) => setStartsAt(event.target.value)} type="datetime-local" value={startsAt} />
+              <input className="form-input" id="starts-at" required onChange={(event) => setStartsAt(event.target.value)} type="datetime-local" value={startsAt} />
             </div>
             <div className="form-field">
               <label htmlFor="tournament-cap">Player cap</label>

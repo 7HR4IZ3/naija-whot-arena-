@@ -1,140 +1,18 @@
 "use client";
-
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarDays, Check, Crown, Play, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { MOCK_TOURNAMENTS } from "@/lib/mock-data";
-import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, normalizeRoomSettings, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { joinTournament } from "@/lib/supabase/actions";
-import { ScreenHeader } from "@/components/screen-header";
-
-type TournamentInfo = {
-  name: string;
-  max_players: number;
-  starts_at: string;
-  status: string;
-  rule_config: Record<string, unknown>;
-};
-
-const demoPlayers = ["Tayo", "Amaka", "Kelechi", "Mide", "Zainab"];
-
+import Link from 'next/link';
+import { ScreenHeader } from '@/components/screen-header';
+import { ArenaFeedback } from '@/components/arena-feedback';
+import { useArena } from '@/lib/use-arena';
+import type { Tournament } from '@/lib/arena';
 export function TournamentRoom({ id }: { id: string }) {
-  const router = useRouter();
-  const configured = isSupabaseConfigured();
-  const mock = MOCK_TOURNAMENTS.find((tournament) => tournament.id === id);
-  const initialSettings = normalizeRoomSettings(mock ? { ...DEFAULT_ROOM_SETTINGS, gameType: "knockout" } : DEFAULT_ROOM_SETTINGS);
-  const [tournament, setTournament] = useState<TournamentInfo>({
-    name: mock?.title ?? "Demo tournament",
-    max_players: mock?.players.match(/\d+/)?.[0] ? Number(mock.players.match(/\d+/)?.[0]) : 32,
-    starts_at: "2026-09-12T21:00:00.000Z",
-    status: mock?.status === "Full" ? "full" : "registration",
-    rule_config: initialSettings,
-  });
-  const [settings, setSettings] = useState<RoomSettings>(initialSettings);
-  const [players, setPlayers] = useState<string[]>(demoPlayers.slice(0, mock?.status === "Full" ? 5 : 3));
-  const [displayName, setDisplayName] = useState("Guest Player");
-  const [joined, setJoined] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!configured || id === "demo-tournament") return;
-    const supabase = createClient();
-    let active = true;
-    const load = async () => {
-      const { data, error: tournamentError } = await supabase.from("tournaments").select("name, max_players, starts_at, status, rule_config").eq("id", id).single();
-      if (!active) return;
-      if (tournamentError || !data) {
-        setError("Could not load this synced tournament. Showing the preview.");
-        return;
-      }
-      setTournament(data as TournamentInfo);
-      setSettings(normalizeRoomSettings(data.rule_config));
-      const { data: roster } = await supabase.from("tournament_players").select("display_name").eq("tournament_id", id).order("seed");
-      if (active && roster) setPlayers(roster.map((player: { display_name: string }) => player.display_name));
-    };
-    void load();
-    return () => { active = false; };
-  }, [configured, id]);
-
-  const join = async () => {
-    if (players.length >= tournament.max_players) return;
-    setError("");
-    if (configured && id !== "demo-tournament") {
-      const result = await joinTournament(id, displayName.trim() || "Guest Player");
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-    }
-    setJoined(true);
-    setPlayers((current) => current.includes(displayName.trim() || "Guest Player") ? current : [...current, displayName.trim() || "Guest Player"]);
-  };
-
-  const start = async () => {
-    if (configured && id !== "demo-tournament") {
-      const { error: startError } = await createClient().from("tournaments").update({ status: "running" }).eq("id", id);
-      if (startError) {
-        setError(startError.message);
-        return;
-      }
-    }
-    router.push(`/game?tournament=${id}`);
-  };
-
-  const startLabel = new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Lagos" }).format(new Date(tournament.starts_at));
-  const isFull = players.length >= tournament.max_players || tournament.status === "full";
-
-  return (
-    <main className="page-wrap page-lobby">
-      <div className="topline">
-        <Link href="/tournaments"><ArrowLeft size={14} /> BACK TO EVENTS</Link>
-        <strong>EVENT ROOM</strong>
-      </div>
-      <ScreenHeader
-        action={<Link className="button button-secondary" href="/tournaments">Leave event</Link>}
-        description="See the rules, join the roster, and wait for the host to start the bracket."
-        kicker={tournament.status === "registration" ? "Registration open" : "Event room"}
-        title={<>{tournament.name}.</>}
-      />
-
-      <div className="lobby-grid event-room-grid">
-        <section className="panel lobby-panel lobby-card">
-          <div className="tag-row">
-            <span className="tag tag-lime"><CalendarDays size={11} /> {startLabel}</span>
-            <span className="tag"><Crown size={11} /> {gameTypeLabel(settings.gameType, settings.targetScore)}</span>
-            <span className="tag"><Users size={11} /> {isFull ? "Full" : `${tournament.max_players - players.length} seats left`}</span>
-          </div>
-          <div className="room-title-line event-roster-heading"><div><h2>The roster</h2><p className="screen-subtitle">{players.length} of {tournament.max_players} players registered</p></div><span className="status-badge">{isFull ? "Roster full" : "Registration open"}</span></div>
-          <div className="roster">
-            {players.map((player, index) => (
-              <div className="roster-row" key={`${player}-${index}`}>
-                <div className="roster-person"><span className="player-avatar" style={{ background: index % 2 ? "var(--blue)" : "var(--yellow)" }}>{player.slice(0, 1).toUpperCase()}</span><span><strong className="player-name">{player}</strong><small className="player-meta">{index === 0 ? "Host" : `Seed ${String(index + 1).padStart(2, "0")}`}</small></span></div>
-                {index === 0 && <span className="ready">Seed 01</span>}
-              </div>
-            ))}
-          </div>
-          <div className="join-form" style={{ marginTop: 22 }}>
-            <label className="sr-only" htmlFor="tournament-display-name">Your name</label>
-            <input className="form-input" id="tournament-display-name" onChange={(event) => setDisplayName(event.target.value)} value={displayName} />
-            <button className="button button-primary" disabled={joined || isFull} onClick={join} type="button"><Check size={16} /> {joined ? "You're in" : isFull ? "Full" : "Join event"}</button>
-          </div>
-        </section>
-
-        <aside className="panel rules-panel event-rules-panel">
-          <h3>Published rules</h3>
-          <ul>
-            <li>{gameTypeLabel(settings.gameType, settings.targetScore)}</li>
-            <li>{settings.pickTwoEnabled ? `2 Pick Two · ${penaltyModeLabel(settings.pickTwoMode)}` : "2 Pick Two disabled"}</li>
-            <li>{settings.pickThreeEnabled ? `5 Pick Three · ${penaltyModeLabel(settings.pickThreeMode)}` : "5 Pick Three disabled"}</li>
-            <li>{settings.initialHand}-card opening deal · {settings.turnTimer === "off" ? "untimed" : `${settings.turnTimer}-second timer`}</li>
-          </ul>
-          <button className="button button-primary" disabled={!joined && !isFull} onClick={start} style={{ marginTop: 18, width: "100%" }} type="button"><Play size={16} fill="currentColor" /> Host starts bracket</button>
-          <p className="form-helper" style={{ marginTop: 11 }}>Demo mode lets you preview the bracket. A synced event is host-controlled.</p>
-        </aside>
-      </div>
-      {error && <div className="alert">{error}</div>}
-    </main>
-  );
+ const { data: t, loading, error, busy, mutate } = useArena<Tournament>('tournament', 'tournament', id);
+ const joined = t?.players.some(p => p.id === t.me);
+ const mine = t?.matches.find(m => m.status === 'running' && m.players.some(p => p.id === t.me));
+ return <main className="page-wrap page-lobby"><ScreenHeader title={t?.name || 'Tournament'} kicker={t?.status || 'EVENT'} description="Register, meet the table, and follow every round." action={<Link className="button button-secondary" href="/tournaments">All events</Link>} /><ArenaFeedback error={error} loading={loading} />
+  {t && <><div className="lobby-grid"><section className="panel lobby-panel"><h2>The roster</h2><p>{t.players.length} / {t.maxPlayers} players · {new Date(t.startsAt).toLocaleString()}</p><div className="roster">{t.players.map(p => <div className="roster-row" key={p.id}><strong>{p.name}{p.id === t.me ? ' · you' : ''}</strong><span>{p.status === 'winner' ? '🏆 Champion' : p.status}</span></div>)}</div>
+  {t.status === 'registration' && <div className="button-row"><button className="button button-primary" disabled={busy || (!joined && t.players.length >= t.maxPlayers)} onClick={() => mutate(joined ? 'withdrawTournament' : 'joinTournament')}>{joined ? 'Withdraw registration' : 'Join tournament'}</button>{t.host === t.me && <button className="button button-secondary" disabled={busy || t.players.length < 2} onClick={() => mutate('startTournament')}>Start bracket</button>}</div>}
+  {mine && <Link className="button button-primary" href={`/game?match=${mine.id}`}>Play your match →</Link>}{joined && t.status === 'running' && !mine && <p role="status">Your result is saved. Follow the bracket below for your next match.</p>}
+  </section><aside className="panel rules-panel"><h3>Published rules</h3><ul><li>Single elimination · random pairing · automatic byes</li><li>{t.rules.gameType === 'knockout' ? `${t.rules.targetScore}-point series per match` : 'One round per match'}</li><li>{t.rules.initialHand}-card deal</li><li>Pick Two: {t.rules.pickTwoEnabled ? t.rules.pickTwoMode : 'off'}</li><li>Pick Three: {t.rules.pickThreeEnabled ? t.rules.pickThreeMode : 'off'}</li><li>{t.rules.turnTimer === 'off' ? 'Untimed' : `${t.rules.turnTimer}-second turns`}</li></ul>{t.host === t.me && t.status === 'registration' && <button className="button button-secondary" disabled={busy} onClick={() => { if (confirm('Cancel this tournament?')) void mutate('cancelTournament'); }}>Cancel event</button>}</aside></div>
+  {t.matches.length > 0 && <section className="panel lobby-panel" style={{ marginTop: 24 }}><h2>The bracket</h2><div className="bracket-grid">{Array.from(new Set(t.matches.map(m => m.round))).map(round => <div key={round}><h3>Round {round}</h3>{t.matches.filter(m => m.round === round).map(m => <article className="bracket-match" key={m.id}>{m.players.map(p => <p key={p.id}><strong>{p.name}</strong>{m.winner === p.id ? ' · Winner' : ''}</p>)}<small>{m.players.length === 1 ? 'Bye' : m.status}</small>{m.players.some(p => p.id === t.me) && <Link className="text-link" href={`/game?match=${m.id}`}>{m.status === 'running' ? 'Play' : 'Result'} →</Link>}</article>)}</div>)}</div></section>}</>}
+ </main>;
 }

@@ -18,13 +18,15 @@ export function AuthForm() {
     setBusy(true);
     setMessage("");
     setError("");
+    try {
     const { error: authError } = await createClient().auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
-    setBusy(false);
     if (authError) setError(authError.message);
     else setMessage("Magic link sent. Check your inbox to finish signing in.");
+    } catch { setError("Could not send the link. Check your connection and try again."); }
+    finally { setBusy(false); }
   };
 
   return (
