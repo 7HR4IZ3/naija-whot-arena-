@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useCardMotion } from "@/lib/use-card-motion";
 import "./online-game.css";
+import { GameModal } from "@/components/game-modal";
 import { CardFace } from "@/components/card-face";
 import { ACTIONS, buildDeck, createCard, isPlayable, shuffle, SUIT_META, SUITS, type Card, type PlayingSuit } from "@/lib/cards";
 import { actionEnabled, DEFAULT_ROOM_SETTINGS, normalizeRoomSettings, penaltyMode, type RoomSettings } from "@/lib/rules";
@@ -369,8 +370,8 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
       <div className="arena-controls"><button className="button button-secondary" disabled={locked} onClick={draw}>{game.pendingPenalty ? `Pick ${game.pendingPenalty} cards` : "Go to market"}</button><button className="button button-primary" disabled={locked || selected===null} onClick={()=>{if(selected!==null)playCard(selected);}}>Play selected card</button></div>
       <p className="arena-hint">Tap a highlighted card, then play it. Swipe your hand to see more cards.</p>
     </section>
-    {game.awaitingSuit && !moving && <section className="arena-inline-picker" aria-label="Call a symbol"><h2>Call a symbol</h2><div className="arena-shape-picker">{SUITS.map((suit,i)=><button className="button button-secondary" key={suit} onClick={()=>chooseSuit(suit)}><span>{["●","▲","✚","■","★"][i]}</span>{SUIT_META[suit].short}</button>)}</div></section>}
-    {game.winner && !moving && <section className="arena-inline-result" role="status"><div className={`arena-result ${game.winner==="You" ? "is-winner" : ""}`}>{game.winner==="You" ? "★" : "w."}</div><h2>{game.winner==="You" ? "You won!" : "Amaka won this round."}</h2><p>Ready for another?</p><button className="button button-primary" onClick={reset}>Play again</button></section>}
+    {game.awaitingSuit && !moving && <GameModal title="Call a symbol"><div className="arena-shape-picker">{SUITS.map((suit,i)=><button className="button button-secondary" key={suit} onClick={()=>chooseSuit(suit)}><span>{["●","▲","✚","■","★"][i]}</span>{SUIT_META[suit].short}</button>)}</div></GameModal>}
+    {game.winner && !moving && <GameModal title={game.winner==="You" ? "You won!" : "Amaka won this round."}><div className={`arena-result ${game.winner==="You" ? "is-winner" : ""}`}>{game.winner==="You" ? "★" : "w."}</div><p>Ready for another?</p><button className="button button-primary" onClick={reset}>Play again</button><Link className="text-link" href="/play">Back to play</Link></GameModal>}
     <footer className="arena-hint"><Link className="text-link" href="/rules">Table rules</Link> · Local practice against the computer</footer>
   </main>;
 }

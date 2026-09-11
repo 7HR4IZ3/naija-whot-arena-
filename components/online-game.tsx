@@ -10,12 +10,7 @@ import { canPlay, type Game } from '@/lib/arena';
 import { useArena } from '@/lib/use-arena';
 import { useCardMotion } from '@/lib/use-card-motion';
 import './online-game.css';
-
-function Modal({ title, children, close }: { title: string; children: React.ReactNode; close?: () => void }) {
- const ref = useRef<HTMLDialogElement>(null);
- useEffect(() => { const dialog = ref.current; dialog?.showModal(); return () => dialog?.close(); }, []);
- return <dialog className="arena-dialog" ref={ref} aria-label={title} onCancel={e => { e.preventDefault(); close?.(); }}><h2>{title}</h2>{children}{close && <button className="button button-secondary" onClick={close}>Close</button>}</dialog>;
-}
+import { GameModal as Modal } from '@/components/game-modal';
 
 export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) {
  const router = useRouter();
