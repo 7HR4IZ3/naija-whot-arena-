@@ -47,7 +47,7 @@ begin
 end $$;
 
 create or replace function arena_private.rules(v jsonb) returns jsonb language plpgsql as $$
-declare d jsonb := '{"gameType":"classic","initialHand":6,"drawMode":"one","turnTimer":"10","targetScore":100,"clockwise":true,"endCalls":true,"starDouble":true,"whotEnabled":true,"whotCallsSuit":true,"holdOnEnabled":true,"pickTwoEnabled":true,"pickTwoMode":"stack","pickThreeEnabled":true,"pickThreeMode":"stack","suspensionEnabled":true,"generalMarketEnabled":true}'; k text;
+declare d jsonb := '{"gameType":"classic","initialHand":6,"drawMode":"one","emptyMarketMode":"score","turnTimer":"10","targetScore":100,"clockwise":true,"endCalls":true,"starDouble":true,"whotEnabled":true,"whotCallsSuit":true,"holdOnEnabled":true,"pickTwoEnabled":true,"pickTwoMode":"stack","pickThreeEnabled":true,"pickThreeMode":"stack","suspensionEnabled":true,"generalMarketEnabled":true}'; k text;
 begin
  if v is null then return d; end if;
  if jsonb_typeof(v)<>'object' then raise exception 'Invalid rules'; end if;
@@ -57,7 +57,7 @@ begin
    d:=jsonb_set(d,array[k],v->k);
   end if;
  end loop;
- if d->>'gameType' not in ('classic','knockout') or d->>'drawMode' not in ('one','until-playable')
+ if d->>'gameType' not in ('classic','knockout') or d->>'drawMode' not in ('one','until-playable') or d->>'emptyMarketMode' not in ('score','recycle')
  or d->>'turnTimer' not in ('off','10','15','30') or d->>'pickTwoMode' not in ('stack','block','none')
  or d->>'pickThreeMode' not in ('stack','block','none') or (d->>'initialHand')::int not between 3 and 6
  or (d->>'targetScore')::int not in (50,100,200) then raise exception 'Invalid rules'; end if;
@@ -119,7 +119,7 @@ create or replace function arena_private.draw(s jsonb,idx int,amount int) return
 declare d jsonb:=s->'deck'; pile jsonb:=s->'discard'; h jsonb:=s->'players'->idx->'hand'; i int;
 begin
  for i in 1..amount loop
-  if jsonb_array_length(d)=0 and jsonb_array_length(pile)>1 then
+  if jsonb_array_length(d)=0 and jsonb_array_length(pile)>1 and coalesce(s->'rules'->>'emptyMarketMode','score')='recycle' then
    d:=arena_private.shuffle(pile-(jsonb_array_length(pile)-1)); pile:=jsonb_build_array(pile->(jsonb_array_length(pile)-1));
   end if;
   exit when jsonb_array_length(d)=0;
@@ -252,7 +252,7 @@ begin
   if n=1 and (s->>'penalty')::int=0 and s->'rules'->>'drawMode'='until-playable' then
    for j in 1..54 loop
     exit when exists(select 1 from jsonb_array_elements(s->'players'->idx->'hand') where arena_private.playable(s,value));
-    exit when jsonb_array_length(s->'deck')=0 and jsonb_array_length(s->'discard')<=1;
+    exit when jsonb_array_length(s->'deck')=0 and (jsonb_array_length(s->'discard')<=1 or coalesce(s->'rules'->>'emptyMarketMode','score')<>'recycle');
     s:=arena_private.draw(s,idx,1);
    end loop;
   end if;
@@ -265,7 +265,7 @@ begin
   if (s->>'passes')::int>=active_count then
    select p.value->>'id' into win from jsonb_array_elements(s->'players') p where not (p.value->>'eliminated')::boolean
    order by (select coalesce(sum((c.value->>'score')::int),0) from jsonb_array_elements(p.value->'hand') c),p.value->>'id' limit 1;
-   s:=s||'{"message":"Market blocked. Lowest hand score wins; tied scores use seat identity order."}'::jsonb;
+   s:=s||'{"message":"Market blocked. Highest hand score loses; tied scores use seat identity order."}'::jsonb;
   end if;
  else raise exception 'Unknown move'; end if;
  s:=s||jsonb_build_object('turn',idx,'event',event,'deadline',case when s->'rules'->>'turnTimer'='off' then null else now()+((s->'rules'->>'turnTimer')::int*interval '1 second') end);
@@ -289,7 +289,7 @@ end $$;
 
 create or replace function public.arena(action text,input jsonb default '{}') returns jsonb
 language plpgsql security definer set search_path=public,arena_private,pg_temp as $$
-declare uid uuid:=auth.uid(); r public.rooms; t public.tournaments; gid uuid; g arena_private.games; ps jsonb; out jsonb; cfg jsonb; n int; seat_no int; code text; nm text; req uuid; prior jsonb; lock_key text; i int; roster jsonb;
+declare uid uuid:=auth.uid(); r public.rooms; t public.tournaments; gid uuid; g arena_private.games; ps jsonb; out jsonb; cfg jsonb; n int; seat_no int; code text; nm text; req uuid; prior jsonb; lock_key text; i int; roster jsonb; active_matches jsonb; completed_matches jsonb;
 begin
  if action='health' then return '{"schemaVersion":1}'::jsonb; end if;
  if uid is null then raise exception 'Sign in to continue'; end if;
@@ -418,9 +418,20 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('id',gg.id,'round',gg.round_no,'status',gg.state->>'status','winner',gg.state->>'winner','players',(select jsonb_agg(jsonb_build_object('id',value->>'id','name',value->>'name')) from jsonb_array_elements(gg.state->'players'))) order by gg.round_no,gg.id),'[]') into roster from arena_private.games gg where tournament_id=t.id;
   out:=jsonb_build_object('id',t.id,'name',t.name,'host',t.host_id,'me',uid,'startsAt',t.starts_at,'maxPlayers',t.max_players,'rules',t.rule_config,'status',t.status,'players',ps,'matches',roster);
  elsif action='history' then
-  select coalesce(jsonb_agg(x order by x.created_at desc),'[]') into ps from (select rr.game_id,rr.score,rr.won,rr.created_at,gg.tournament_id,gg.room_id from arena_private.results rr join arena_private.games gg on gg.id=rr.game_id where rr.user_id=uid order by rr.created_at desc limit 50) x;
+  select coalesce(jsonb_agg(jsonb_build_object('game_id',g.id,'room_id',g.room_id,'room_code',r.code,'room_name',r.name,'tournament_id',g.tournament_id,'round',g.round_no,'status',g.state->>'status','turn_id',turn_player.value->>'id','turn_name',turn_player.value->>'name','my_turn',turn_player.value->>'id'=uid::text,'updated_at',g.updated_at,'message',coalesce(g.state->>'message',''),'player_count',jsonb_array_length(g.state->'players')) order by g.updated_at desc),'[]'::jsonb) into active_matches
+  from arena_private.games g
+  left join public.rooms r on r.id=g.room_id
+  left join lateral (select p.value from jsonb_array_elements(g.state->'players') with ordinality as p(value,turn_index) where p.turn_index=(g.state->>'turn')::int+1) turn_player on true
+  where g.state->>'status'='running' and exists(select 1 from jsonb_array_elements(g.state->'players') p where p->>'id'=uid::text);
+  select coalesce(jsonb_agg(jsonb_build_object('game_id',rr.game_id,'score',rr.score,'won',rr.won,'created_at',rr.created_at,'tournament_id',gg.tournament_id,'room_id',gg.room_id,'room_code',r.code,'room_name',r.name,'round',gg.round_no,'winner_id',gg.state->>'winner','winner_name',winner_player.name) order by rr.created_at desc),'[]'::jsonb) into completed_matches
+  from arena_private.results rr
+  join arena_private.games gg on gg.id=rr.game_id
+  left join public.rooms r on r.id=gg.room_id
+  left join lateral (select p.value->>'name' as name from jsonb_array_elements(gg.state->'players') p(value) where p.value->>'id'=gg.state->>'winner' limit 1) winner_player on true
+  where rr.user_id=uid;
+  ps:=completed_matches;
   select coalesce(jsonb_agg(x),'[]') into roster from (select p.display_name,count(*) games,count(*) filter(where rr.won) wins from arena_private.results rr join public.profiles p on p.id=rr.user_id group by rr.user_id,p.display_name order by wins desc,games desc limit 25) x;
-  out:=jsonb_build_object('history',ps,'leaderboard',roster);
+  out:=jsonb_build_object('active',active_matches,'completed',completed_matches,'history',ps,'leaderboard',roster);
  else raise exception 'Unknown action'; end if;
  if r.id is not null and action not in ('room','heartbeat') then perform arena_private.ping(r.id,null); end if;
  if t.id is not null and action<>'tournament' then perform arena_private.ping(null,t.id); end if;

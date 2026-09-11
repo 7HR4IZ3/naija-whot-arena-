@@ -1,7 +1,7 @@
 "use client";
 
 import { Settings2 } from "lucide-react";
-import { gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, ROOM_PRESETS, type RoomSettings } from "@/lib/rules";
+import { emptyMarketDescription, gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
 
 type RoomSettingsProps = {
   settings: RoomSettings;
@@ -22,7 +22,6 @@ export function RoomSettingsPanel({
   settings,
   onChange,
   title = "House rules",
-  description = "Every switch is shown to players before they join.",
   idPrefix = "room-settings",
   maxPlayers,
 }: RoomSettingsProps) {
@@ -32,33 +31,12 @@ export function RoomSettingsPanel({
     ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.`
     : "";
   return (
-    <details className="settings-accordion" open>
-      <summary>
+    <section className="settings-accordion">
+      <header>
         <span className="settings-summary-title"><Settings2 size={16} /> {title}</span>
         <span className="settings-summary-value">{gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand} cards</span>
-      </summary>
+      </header>
       <div className="settings-body">
-        <p className="settings-intro">{description} Set the exact behaviour for 2 Pick Two, 5 Pick Three, 8 Suspension, and every optional power card.</p>
-
-        <div className="settings-presets" role="group" aria-label="Room presets">
-          <span className="settings-presets-label">Start with a preset</span>
-          <div className="settings-preset-grid">
-            {ROOM_PRESETS.map((preset) => (
-              <button
-                aria-pressed={settings.gameType === preset.id}
-                className={`settings-preset ${settings.gameType === preset.id ? "is-active" : ""}`}
-                key={preset.id}
-                onClick={() => onChange(preset.settings)}
-                type="button"
-              >
-                <strong>{preset.label}</strong>
-                <small>{preset.description}</small>
-              </button>
-            ))}
-          </div>
-          <span className="form-helper">You can fine-tune any rule below.</span>
-        </div>
-
         <details className="settings-section" open>
           <summary className="settings-section-heading">
             <div><h3>Match format</h3><p>Choose the shape of the round and how quickly turns move.</p></div>
@@ -74,17 +52,26 @@ export function RoomSettingsPanel({
               <span className="form-helper">{gameTypeDescription(settings.gameType)}</span>
             </div>
             <div className="form-field">
-              <label htmlFor={`${idPrefix}-initial-hand`}>Opening hand</label>
+              <label htmlFor={`${idPrefix}-initial-hand`}>Starting cards</label>
               <input aria-describedby={`${idPrefix}-initial-hand-help`} aria-invalid={Boolean(handError)} className="form-input" id={`${idPrefix}-initial-hand`} inputMode="numeric" max={handLimit} min={MIN_INITIAL_HAND} onChange={(event) => onChange({ initialHand: event.target.value === "" ? 0 : Number(event.target.value) })} type="number" value={settings.initialHand || ""} />
               <span className="form-helper" id={`${idPrefix}-initial-hand-help`}>{hasValidPlayerCount ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.` : `Choose ${MIN_INITIAL_HAND}–${MAX_INITIAL_HAND} cards after selecting a valid table size.`}</span>
               {handError && <span className="form-error" role="alert">{handError}</span>}
             </div>
+          </div></details><details className="settings-section"><summary className="settings-section-heading"><h3>More rules</h3></summary><div className="settings-grid">
             <div className="form-field">
               <label htmlFor={`${idPrefix}-draw-mode`}>When you cannot play</label>
               <select className="form-select" id={`${idPrefix}-draw-mode`} onChange={(event) => onChange({ drawMode: event.target.value as RoomSettings["drawMode"] })} value={settings.drawMode}>
                 <option value="one">Draw one and pass</option>
                 <option value="until-playable">Draw until playable</option>
               </select>
+            </div>
+            <div className="form-field">
+              <label htmlFor={`${idPrefix}-empty-market`}>When the market is empty</label>
+              <select className="form-select" id={`${idPrefix}-empty-market`} onChange={(event) => onChange({ emptyMarketMode: event.target.value as RoomSettings["emptyMarketMode"] })} value={settings.emptyMarketMode}>
+                <option value="score">{settings.gameType === "tender" ? "Count points (lowest eliminated)" : "Count points (highest loses)"}</option>
+                <option value="recycle">Recycle the pot</option>
+              </select>
+              <span className="form-helper">{settings.gameType === "tender" && settings.emptyMarketMode === "score" ? "Count active hands and eliminate the lowest total." : emptyMarketDescription(settings.emptyMarketMode)}</span>
             </div>
             <div className="form-field">
               <label htmlFor={`${idPrefix}-timer`}>Turn timer</label>
@@ -95,7 +82,7 @@ export function RoomSettingsPanel({
                 <option value="30">30 seconds</option>
               </select>
             </div>
-            <div className="form-field">
+            {settings.gameType === "knockout" && <div className="form-field">
               <label htmlFor={`${idPrefix}-target-score`}>Knockout target</label>
               <select className="form-select" id={`${idPrefix}-target-score`} onChange={(event) => onChange({ targetScore: Number(event.target.value) as RoomSettings["targetScore"] })} value={settings.targetScore}>
                 <option value="50">Eliminate at 50</option>
@@ -103,7 +90,7 @@ export function RoomSettingsPanel({
                 <option value="200">Eliminate at 200</option>
               </select>
               <span className="form-helper">Used when knockout scoring is selected.</span>
-            </div>
+            </div>}
             <div className="form-field">
               <label>Direction</label>
               <div className="form-checkboxes">
@@ -162,9 +149,9 @@ export function RoomSettingsPanel({
           </div>
         </details>
 
-        <div className="settings-footnote"><strong>Current preset:</strong> {gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.pickTwoEnabled ? penaltyModeLabel(settings.pickTwoMode) : "2 disabled"} · {settings.pickThreeEnabled ? penaltyModeLabel(settings.pickThreeMode) : "5 disabled"}.</div>
+        <div className="settings-footnote"><strong>Current preset:</strong> {gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.emptyMarketMode === "recycle" ? "recycle pot" : settings.gameType === "tender" ? "lowest total eliminated" : "highest hand loses"} · {settings.pickTwoEnabled ? penaltyModeLabel(settings.pickTwoMode) : "2 disabled"} · {settings.pickThreeEnabled ? penaltyModeLabel(settings.pickThreeMode) : "5 disabled"}.</div>
       </div>
-    </details>
+    </section>
   );
 }
 

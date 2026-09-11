@@ -106,7 +106,31 @@ tenderView=await rpc(users[2],'draw',{game:tenderView.id,version:tenderView.vers
 assert.equal(tenderView.status,'running'); assert.equal(tenderView.round,2); assert.equal(tenderView.event.type,'tender-elimination');
 assert.equal(tenderView.players.filter(p=>!p.eliminated).length,2);
 assert.equal(tenderView.players.find(p=>p.id===users[0]).eliminated,true);
+// The default empty-market rule counts points: the lowest hand wins and the highest hand loses.
+const scoreRoom=await rpc(users[0],'createRoom',{name:'Empty market score test',maxPlayers:2,rules:{turnTimer:'off'} });
+await rpc(users[1],'joinRoom',{code:scoreRoom.code}); await rpc(users[1],'ready',{code:scoreRoom.code,ready:true});
+const scoreStart=await rpc(users[0],'startRoom',{code:scoreRoom.code});
+let scoreFixture=(await db.query('select state from arena_private.games where id=$1',[scoreStart.game])).rows[0].state;
+scoreFixture.players[0].hand=[{id:'score-low',suit:'circle',value:1,score:1}];
+scoreFixture.players[1].hand=[{id:'score-high',suit:'circle',value:10,score:10}];
+scoreFixture.deck=[]; scoreFixture.discard=[{id:'score-under',suit:'circle',value:3,score:3},{id:'score-top',suit:'circle',value:4,score:4}]; scoreFixture.turn=0; scoreFixture.passes=0; scoreFixture.deadline=null;
+await db.query('update arena_private.games set state=$1 where id=$2',[JSON.stringify(scoreFixture),scoreStart.game]);
+let scoreView=await rpc(users[0],'draw',{game:scoreStart.game,version:1});
+scoreView=await rpc(users[1],'draw',{game:scoreView.id,version:scoreView.version});
+assert.equal(scoreView.status,'finished'); assert.equal(scoreView.winner,users[0]); assert.match(scoreView.message,/Highest hand score loses/);
+// The optional recycle rule keeps the facing card and shuffles the cards underneath back into the market.
+const recycleRoom=await rpc(users[0],'createRoom',{name:'Empty market recycle test',maxPlayers:2,rules:{turnTimer:'off',emptyMarketMode:'recycle'} });
+await rpc(users[1],'joinRoom',{code:recycleRoom.code}); await rpc(users[1],'ready',{code:recycleRoom.code,ready:true});
+const recycleStart=await rpc(users[0],'startRoom',{code:recycleRoom.code});
+let recycleFixture=(await db.query('select state from arena_private.games where id=$1',[recycleStart.game])).rows[0].state;
+recycleFixture.players[0].hand=[{id:'recycle-holder',suit:'star',value:7,score:14}];
+recycleFixture.players[1].hand=[{id:'recycle-other',suit:'triangle',value:7,score:7}];
+recycleFixture.deck=[]; recycleFixture.discard=[{id:'recycle-under',suit:'circle',value:3,score:3},{id:'recycle-top',suit:'circle',value:4,score:4}]; recycleFixture.turn=0; recycleFixture.passes=0; recycleFixture.deadline=null;
+await db.query('update arena_private.games set state=$1 where id=$2',[JSON.stringify(recycleFixture),recycleStart.game]);
+const recycleView=await rpc(users[0],'draw',{game:recycleStart.game,version:1});
+assert.equal(recycleView.status,'running'); assert.equal(recycleView.top.id,'recycle-top'); assert.equal(recycleView.marketCount,0); assert.equal(recycleView.hand.some(c=>c.id==='recycle-under'),true);
 console.log(`PASS: ${simulationMoves} validated moves across 12 full games; 2–5 players, knockout, draw modes, defence modes, deck conservation, pick-three and expired turns`);
 console.log('PASS: custom 2–8 player room capacity, hand-size validation, and Tender elimination/redeal');
+console.log('PASS: empty-market scoring and optional pot recycling');
 console.log('PASS: schema, auth checks, ready/host/capacity guards, private hands, stale moves, idempotency, results, five-player bracket and legacy permission isolation');
 await db.close();

@@ -64,7 +64,7 @@ export function AuthForm({ initialMode = 'signin', initialError = '', nextPath =
   finally { lock.current = false; setBusy(false); }
  };
  return <main className="page-wrap page-auth">
-  <ScreenHeader title="Make yourself at home." kicker="YOUR ACCOUNT" description="Your people, your tables, and one more round." action={<Link className="button button-secondary" href="/">Back home</Link>} />
+  <ScreenHeader title={mode === 'signup' ? 'Create account' : 'Sign in'} kicker="YOUR ACCOUNT" description="Keep your matches and play with friends." action={<Link className="button button-secondary" href="/">Back home</Link>} />
   <div className="auth-layout"><section className="panel auth-card">
    {mode !== 'reset' && <div className="auth-mode-switch" aria-label="Account options"><button type="button" aria-pressed={mode === 'signin'} disabled={busy} onClick={() => switchMode('signin')}>Sign in</button><button type="button" aria-pressed={mode === 'signup'} disabled={busy} onClick={() => switchMode('signup')}>Create account</button></div>}
    <h2>{title}</h2>
@@ -76,7 +76,7 @@ export function AuthForm({ initialMode = 'signin', initialError = '', nextPath =
      {(mode === 'signup' || mode === 'reset') && <div className="auth-field"><label htmlFor="auth-confirm">Confirm password</label><input id="auth-confirm" className="form-input" type={visible ? 'text' : 'password'} autoComplete="new-password" required minLength={8} value={confirmation} onChange={e => setConfirmation(e.target.value)} /></div>}
      {mode === 'signin' && <button className="text-link auth-forgot" type="button" onClick={() => switchMode('forgot')}>Forgot password?</button>}
      <button className="button button-primary auth-submit" type="submit">{busy ? 'Please wait…' : { signin: 'Sign in', signup: 'Create account', forgot: 'Send reset email', reset: 'Save new password', magic: 'Send magic link' }[mode]}</button>
-     {mode === 'signin' && <button type="button" className="text-link auth-alternative" onClick={() => switchMode('magic')}>Use a magic link instead</button>}
+     {mode === 'signin' && <button type="button" className="text-link auth-alternative" onClick={() => switchMode('magic')}>Email me a sign-in link</button>}
      {mode === 'magic' && <button type="button" className="text-link auth-alternative" onClick={() => switchMode('signin')}>Use my password instead</button>}
     </fieldset>
    </form>}

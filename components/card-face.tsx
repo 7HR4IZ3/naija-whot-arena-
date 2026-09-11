@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { MouseEventHandler } from "react";
+import type { MouseEventHandler, PointerEventHandler } from "react";
 import { actionLabel, type Card, SUIT_META } from "@/lib/cards";
 
 type CardFaceProps = {
@@ -9,6 +9,10 @@ type CardFaceProps = {
   selected?: boolean;
   disabled?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
+  onPointerDown?: PointerEventHandler<HTMLButtonElement>;
+  onPointerMove?: PointerEventHandler<HTMLButtonElement>;
+  onPointerUp?: PointerEventHandler<HTMLButtonElement>;
+  onPointerCancel?: PointerEventHandler<HTMLButtonElement>;
   className?: string;
 };
 
@@ -19,6 +23,10 @@ export function CardFace({
   selected = false,
   disabled = false,
   onClick,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
   className = "",
 }: CardFaceProps) {
   const classes = [
@@ -43,7 +51,7 @@ export function CardFace({
 
   if (onClick) {
     return (
-      <button className={classes} onClick={onClick} disabled={disabled} aria-label={label} type="button">
+      <button className={classes} data-card-id={card.id} draggable={false} onClick={onClick} onPointerCancel={onPointerCancel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} disabled={disabled} aria-label={label} type="button">
         <CardVisual card={card} />
       </button>
     );

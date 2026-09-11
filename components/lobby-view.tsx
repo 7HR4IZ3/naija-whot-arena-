@@ -14,7 +14,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 export function LobbyView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [roomName, setRoomName] = useState("Friday Night Heat");
+  const [roomName, setRoomName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState("5");
   const inviteCode = searchParams.get("code")?.replace(/[^a-z0-9]/gi, "").toUpperCase() ?? "";
   const [settings, setSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
@@ -78,24 +78,24 @@ export function LobbyView() {
   };
 
   return (
-    <main className="page-wrap page-builder">
+    <main className={`page-wrap page-builder ${inviteCode ? "has-invite" : ""}`}>
       <div className="topline">
         <Link href="/play"><ArrowLeft size={14} /> BACK TO PLAY</Link>
         <strong>TABLE BUILDER</strong>
       </div>
       <ScreenHeader
         action={<Link className="button button-secondary" href="/play">Leave builder</Link>}
-        description="A name, a few house rules, and a code to share. Make yourself at home."
+        description={inviteCode ? (busy === "join" ? "Joining your friends…" : "Join the table from your invite.") : "Choose the basics. Share an invite when you’re ready."}
         kicker="Bring your people"
-        title="Let’s set your table."
+        title={inviteCode ? "Join a game" : "Create a game"}
       />
 
       <div className="lobby-grid builder-grid">
         <form className="panel form-panel lobby-panel builder-form" onSubmit={handleCreate}>
-          <p className="screen-kicker">01 · The essentials</p><h2>Make it yours.</h2>
+          <h2>Game details</h2>
           <div className="form-grid">
             <div className="form-field full">
-              <label htmlFor="room-name">Table name</label>
+              <label htmlFor="room-name">Table name (optional)</label>
               <input className="form-input" id="room-name" onChange={(event) => setRoomName(event.target.value)} value={roomName} />
             </div>
             <div className="form-field">
