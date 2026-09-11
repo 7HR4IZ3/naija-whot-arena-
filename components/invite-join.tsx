@@ -6,9 +6,9 @@ import { useState } from "react";
 import { joinRoom } from "@/lib/supabase/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
-export function InviteJoin({ id = "invite-code", compact = false }: { id?: string; compact?: boolean }) {
+export function InviteJoin({ id = "invite-code", compact = false, initialCode = "" }: { id?: string; compact?: boolean; initialCode?: string }) {
   const router = useRouter();
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(initialCode.replace(/[^a-z0-9]/gi, "").toUpperCase());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,6 +45,7 @@ export function InviteJoin({ id = "invite-code", compact = false }: { id?: strin
         <input
           aria-describedby={error ? `${id}-error` : undefined}
           autoCapitalize="characters"
+          autoComplete="one-time-code"
           className="code-input"
           id={id}
           inputMode="text"

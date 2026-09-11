@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Clipboard, Copy, LockKeyhole, Users } from "lucide-react";
+import { ArrowLeft, Clipboard, LockKeyhole, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { InviteJoin } from "@/components/invite-join";
 import { RoomSettingsPanel } from "@/components/room-settings";
 import { ScreenHeader } from "@/components/screen-header";
-import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, validateRoomConfiguration, type RoomSettings } from "@/lib/rules";
+import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, MAX_ROOM_PLAYERS, MIN_ROOM_PLAYERS, validateRoomConfiguration, type RoomSettings } from "@/lib/rules";
 import { createRoom, joinRoom } from "@/lib/supabase/actions";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -15,21 +16,25 @@ export function LobbyView() {
   const searchParams = useSearchParams();
   const [roomName, setRoomName] = useState("Friday Night Heat");
   const [maxPlayers, setMaxPlayers] = useState("5");
-  const [code, setCode] = useState(searchParams.get("code")?.toUpperCase() ?? "");
+  const inviteCode = searchParams.get("code")?.replace(/[^a-z0-9]/gi, "").toUpperCase() ?? "";
   const [settings, setSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
   const [error, setError] = useState("");
   const inviteJoinStarted = useRef(false);
 
   useEffect(() => {
-    if (!isSupabaseConfigured() || !searchParams.get("code") || code.trim().length < 4 || inviteJoinStarted.current) return;
+    if (!isSupabaseConfigured() || inviteCode.length < 4 || inviteJoinStarted.current) return;
     let active = true;
     const joinInvite = async () => {
       const { data } = await createClient().auth.getSession();
-      if (!active || !data.session) return;
+      if (!active) return;
+      if (!data.session) {
+        router.replace(`/auth?next=${encodeURIComponent(`/lobby?code=${inviteCode}`)}`);
+        return;
+      }
       inviteJoinStarted.current = true;
       setBusy("join");
-      const result = await joinRoom(code.trim().toUpperCase());
+      const result = await joinRoom(inviteCode);
       if (!active) return;
       setBusy(null);
       if (result.error || !result.code) {
@@ -40,7 +45,9 @@ export function LobbyView() {
     };
     void joinInvite();
     return () => { active = false; };
-  }, [code, router, searchParams]);
+  }, [inviteCode, router]);
+
+  const configurationError = validateRoomConfiguration(Number(maxPlayers), settings);
 
   const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -70,20 +77,6 @@ export function LobbyView() {
     router.push(`/table/${result.code}`);
   };
 
-  const handleJoin = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (code.trim().length < 4) return;
-    setBusy("join");
-    setError("");
-    const result = await joinRoom(code.trim().toUpperCase());
-    setBusy(null);
-    if (result.error || !result.code) {
-      setError(result.error ?? "Could not join that table.");
-      return;
-    }
-    router.push(`/table/${result.code}`);
-  };
-
   return (
     <main className="page-wrap page-builder">
       <div className="topline">
@@ -107,17 +100,18 @@ export function LobbyView() {
             </div>
             <div className="form-field">
               <label htmlFor="max-players">Maximum players</label>
-              <input className="form-input" id="max-players" inputMode="numeric" max="8" min="2" onChange={(event) => setMaxPlayers(event.target.value)} required step="1" type="number" value={maxPlayers} />
-              <span className="form-helper">2–8 seats. The hand size is checked against the 54-card deck.</span>
+              <input aria-describedby="room-cap-help" aria-invalid={Boolean(configurationError)} className="form-input" id="max-players" inputMode="numeric" max={MAX_ROOM_PLAYERS} min={MIN_ROOM_PLAYERS} onChange={(event) => { setError(""); setMaxPlayers(event.target.value); }} required step="1" type="number" value={maxPlayers} />
+              <span className="form-helper" id="room-cap-help">{MIN_ROOM_PLAYERS}–{MAX_ROOM_PLAYERS} seats. The opening hand is checked against the deck.</span>
             </div>
             <div className="form-field">
               <label>Settings preview</label>
               <p className="form-helper">{gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.drawMode === "one" ? "draw one" : "draw until playable"}</p>
             </div>
           </div>
-          <RoomSettingsPanel idPrefix="room" maxPlayers={Number(maxPlayers)} onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))} settings={settings} />
+          <RoomSettingsPanel idPrefix="room" maxPlayers={Number(maxPlayers)} onChange={(patch) => { setError(""); setSettings((current) => ({ ...current, ...patch })); }} settings={settings} />
+          {configurationError && <p className="form-error" role="alert">{configurationError}</p>}
           <div className="form-actions">
-            <button className="button button-primary" disabled={busy !== null} type="submit">
+            <button className="button button-primary" disabled={busy !== null || Boolean(configurationError)} type="submit">
               <LockKeyhole size={16} />
               {busy === "create" ? "Creating…" : "Create table"}
             </button>
@@ -143,19 +137,12 @@ export function LobbyView() {
       <section className="join-panel" id="join-table" style={{ marginTop: 34 }}>
         <div>
           <h2>Join someone else&apos;s table</h2>
-          <p>{isSupabaseConfigured() ? "Your account name is used automatically. No guest name needed." : "Demo mode is on — connect Supabase to join live tables."}</p>
+          <p>{isSupabaseConfigured() ? "Enter the invite code and continue with your account name." : "Demo mode is on — connect Supabase to join live tables."}</p>
         </div>
-        <form className="join-form" onSubmit={handleJoin}>
-          <label className="sr-only" htmlFor="lobby-code">Table code</label>
-          <input className="code-input" id="lobby-code" maxLength={8} minLength={4} onChange={(event) => setCode(event.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase())} pattern="[A-Z0-9]{4,8}" placeholder="ABC123" required value={code} />
-          <button className="button button-secondary" disabled={busy !== null || code.trim().length < 4} type="submit">
-            <Copy size={15} />
-            {busy === "join" ? "Joining…" : "Join"}
-          </button>
-        </form>
+        <InviteJoin key={inviteCode || "join"} id="lobby-code" initialCode={inviteCode} />
       </section>
 
-      {error && <div className="alert">{error}{error.toLowerCase().includes("sign in") && <Link className="text-link" href={`/auth?next=${encodeURIComponent(`/lobby?code=${code}`)}`}>Sign in to join →</Link>}</div>}
+      {error && <div className="alert">{error}{error.toLowerCase().includes("sign in") && <Link className="text-link" href={`/auth?next=${encodeURIComponent(`/lobby?code=${inviteCode}`)}`}>Sign in to join →</Link>}</div>}
       <p className="muted" style={{ marginTop: 20 }}><Clipboard size={13} style={{ verticalAlign: "-2px" }} /> Tip: room codes are case-insensitive.</p>
     </main>
   );

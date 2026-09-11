@@ -26,7 +26,11 @@ export function RoomSettingsPanel({
   idPrefix = "room-settings",
   maxPlayers,
 }: RoomSettingsProps) {
-  const handLimit = maxPlayers ? maxInitialHandForPlayers(maxPlayers, settings.whotEnabled) : MAX_INITIAL_HAND;
+  const hasValidPlayerCount = typeof maxPlayers === "number" && Number.isInteger(maxPlayers) && maxPlayers >= 2 && maxPlayers <= 8;
+  const handLimit = hasValidPlayerCount ? maxInitialHandForPlayers(maxPlayers, settings.whotEnabled) : MAX_INITIAL_HAND;
+  const handError = hasValidPlayerCount && (settings.initialHand < MIN_INITIAL_HAND || settings.initialHand > handLimit)
+    ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.`
+    : "";
   return (
     <details className="settings-accordion" open>
       <summary>
@@ -71,8 +75,9 @@ export function RoomSettingsPanel({
             </div>
             <div className="form-field">
               <label htmlFor={`${idPrefix}-initial-hand`}>Opening hand</label>
-              <input className="form-input" id={`${idPrefix}-initial-hand`} inputMode="numeric" max={MAX_INITIAL_HAND} min={MIN_INITIAL_HAND} onChange={(event) => onChange({ initialHand: Number(event.target.value) })} type="number" value={settings.initialHand} />
-              <span className="form-helper">{maxPlayers ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.` : `Choose ${MIN_INITIAL_HAND}–${MAX_INITIAL_HAND} cards. More cards need a smaller table.`}</span>
+              <input aria-describedby={`${idPrefix}-initial-hand-help`} aria-invalid={Boolean(handError)} className="form-input" id={`${idPrefix}-initial-hand`} inputMode="numeric" max={handLimit} min={MIN_INITIAL_HAND} onChange={(event) => onChange({ initialHand: event.target.value === "" ? 0 : Number(event.target.value) })} type="number" value={settings.initialHand || ""} />
+              <span className="form-helper" id={`${idPrefix}-initial-hand-help`}>{hasValidPlayerCount ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.` : `Choose ${MIN_INITIAL_HAND}–${MAX_INITIAL_HAND} cards after selecting a valid table size.`}</span>
+              {handError && <span className="form-error" role="alert">{handError}</span>}
             </div>
             <div className="form-field">
               <label htmlFor={`${idPrefix}-draw-mode`}>When you cannot play</label>
