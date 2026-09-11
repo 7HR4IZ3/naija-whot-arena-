@@ -8,6 +8,7 @@ import { ArenaFeedback } from '@/components/arena-feedback';
 import { SUITS, SUIT_META } from '@/lib/cards';
 import { canPlay, type Game } from '@/lib/arena';
 import { useArena } from '@/lib/use-arena';
+import { useCardMotion } from '@/lib/use-card-motion';
 import './online-game.css';
 
 function Modal({ title, children, close }: { title: string; children: React.ReactNode; close?: () => void }) {
@@ -23,12 +24,10 @@ export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) 
  const [picker, setPicker] = useState(false);
  const [leave, setLeave] = useState(false);
  const [help, setHelp] = useState(false);
- const [animating, setAnimating] = useState(false);
  const [seconds, setSeconds] = useState<number | null>(null);
  const [sound, setSound] = useState(false);
  const audio = useRef<AudioContext | null>(null);
  const root = useRef<HTMLDivElement>(null);
- const previous = useRef<Game | null>(null);
  const timeoutVersion = useRef<number | null>(null);
  const mutateRef = useRef(mutate);
  useEffect(() => { mutateRef.current = mutate; }, [mutate]);
@@ -50,44 +49,16 @@ export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) 
   tick(); const timer = setInterval(tick, 500);
   return () => clearInterval(timer);
  }, [game]);
+ const animating = useCardMotion(game ? { key: game.id + ':' + game.round, top: game.top, actor: game.event.actor, players: game.players.map(p => ({ id: p.id, count: p.count })) } : null, root);
  useEffect(() => {
-  if (!game) return;
-  const old = previous.current;
-  previous.current = game;
-  if (!old || old.version === game.version || !root.current || matchMedia('(prefers-reduced-motion: reduce)').matches) { const timer=setTimeout(()=>setAnimating(false),0); return()=>clearTimeout(timer); }
-  const controller = new AbortController();
-  const fly = async () => {
-   setAnimating(true);
-   const event = game.event;
-   let from: HTMLElement | null = null;
-   let to: HTMLElement | null = null;
-   const nodes = Array.from(root.current!.querySelectorAll<HTMLElement>('[data-player]'));
-   const actor = nodes.find(n => n.dataset.player === event.actor) || null;
-   if (event.type === 'play') { from = actor; to = root.current!.querySelector('[data-discard]'); }
-   else if (event.type === 'draw' || event.type === 'timeout') { from = root.current!.querySelector('[data-market]'); to = actor; }
-   const flights = event.type === 'play' ? 1 : Math.min(event.count || 0, 8);
-   if (from && to) for (let i = 0; i < flights; i++) {
-    if (controller.signal.aborted) break;
-    const a = from.getBoundingClientRect(); const b = to.getBoundingClientRect();
-    const img = document.createElement('img');
-    img.src = event.card ? `/cards/classic/${event.card.suit}-${event.card.value}.svg` : '/cards/classic/back.svg';
-    img.alt = ''; img.className = 'arena-flying-card'; img.style.left = `${a.left + a.width / 2 - 34}px`; img.style.top = `${a.top + a.height / 2 - 51}px`;
-    document.body.append(img);
-    const animation = img.animate([{ transform: 'translate(0,0) rotate(-8deg)', opacity: .85 }, { transform: `translate(${b.left + b.width / 2 - a.left - a.width / 2}px,${b.top + b.height / 2 - a.top - a.height / 2}px) rotate(0)`, opacity: 1 }], { duration: flights > 1 ? 150 : 420, easing: 'cubic-bezier(.2,.75,.25,1)' });
-    controller.signal.addEventListener('abort', () => animation.cancel(), { once: true });
-    try { await animation.finished; } catch {} finally { img.remove(); }
-   }
-   if (!controller.signal.aborted) {
-    setAnimating(false);
-    if (audio.current?.state === 'running' && sound) {
-     const tone = audio.current.createOscillator(); const gain = audio.current.createGain();
-     tone.connect(gain); gain.connect(audio.current.destination); gain.gain.setValueAtTime(.025, audio.current.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audio.current.currentTime + .09); tone.frequency.value = 420; tone.start(); tone.stop(audio.current.currentTime + .1);
-    }
-   }
-  };
-  void fly();
-  return () => { controller.abort(); };
- }, [game, sound]);
+  if (!sound || audio.current?.state !== 'running') return;
+  const context = audio.current;
+  const tone = context.createOscillator(); const gain = context.createGain();
+  tone.connect(gain); gain.connect(context.destination);
+  gain.gain.setValueAtTime(.02, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.001, context.currentTime + .09);
+  tone.frequency.value = 420; tone.start(); tone.stop(context.currentTime + .1);
+ }, [game?.version, sound]);
  const me = game?.players.find(p => p.id === game.me);
  const turn = game?.players[game.turn];
  const myTurn = turn?.id === game?.me && game?.status === 'running' && !me?.eliminated;

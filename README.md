@@ -23,7 +23,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Without Supabase variables, use `/game` for the local game loop and explore the preview lobbies. For synced rooms and magic-link auth, add the public Supabase URL and anon key to `.env.local`.
+Without Supabase variables, use `/game` for local practice. For synced rooms and email/password accounts, add the public Supabase URL and anon key to `.env.local`. See `BACKEND_SETUP.md` for the database migration and authentication configuration.
 
 ## Supabase setup
 

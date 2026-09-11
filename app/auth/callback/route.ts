@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
  if (code) {
   const client = await createServerSupabaseClient();
   const { error } = await client.auth.exchangeCodeForSession(code);
-  if (!error) return NextResponse.redirect(new URL('/account', request.url));
+  if (!error) return NextResponse.redirect(new URL(request.nextUrl.searchParams.get('next') === 'reset' ? '/auth/reset' : '/account', request.url));
  }
  return NextResponse.redirect(new URL('/auth?error=expired', request.url));
 }

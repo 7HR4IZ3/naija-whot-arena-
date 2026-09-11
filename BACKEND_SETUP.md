@@ -26,9 +26,13 @@ Visit `/setup` or `/api/health`. Success is `ready` with schemaVersion `1`. `mig
 
 ## Authentication
 
-Enable Email sign-in. Set Site URL to `https://naija-whot-arena.vercel.app` and add `https://naija-whot-arena.vercel.app/auth/callback` to allowed redirect URLs. Add the corresponding callback for each preview used for testing. The existing magic-link template should link to `{{ .ConfirmationURL }}`. This implements PKCE; open the email link in the same browser that requested it. An expired or cross-browser link can be replaced by requesting another.
+Enable the Email provider. `/auth` supports email/password sign-in, account creation, password reset, and optional magic-link sign-in. Password sign-in does not send an email. Existing accounts created without a password can use Forgot password to set one, or continue using a magic link.
 
-Configure custom SMTP for public email delivery. The default Supabase sender only supports authorized team recipients. Send a real sign-in email and verify the return to `/account`; delivery cannot be confirmed from a public health check.
+Set Site URL to `https://naija-whot-arena.vercel.app` and allow both `https://naija-whot-arena.vercel.app/auth/callback` and `https://naija-whot-arena.vercel.app/auth/callback?next=reset`. Add corresponding callback URLs for previews used for testing. Confirmation and password-recovery templates should link to `{{ .ConfirmationURL }}`. Open confirmation/reset emails in the same browser that requested them (PKCE). The callback exchanges the code for a cookie-based session; recovery continues to `/auth/reset`.
+
+Signup follows the project's Confirm email setting: if enabled, the app asks the user to verify their email once; if disabled, a successful signup immediately signs them in. The app does not change that dashboard setting.
+
+Configure custom SMTP for signup confirmation and password-reset emails. The default Supabase sender only supports authorized team recipients. Verify signup, password sign-in, logout and recovery with a real account; delivery cannot be confirmed from a public health check.
 
 ## Features and rules
 

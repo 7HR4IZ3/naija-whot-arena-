@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeft, BookOpen, CircleHelp, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useCardMotion } from "@/lib/use-card-motion";
+import "./online-game.css";
 import { CardFace } from "@/components/card-face";
 import { ACTIONS, buildDeck, createCard, isPlayable, shuffle, SUIT_META, SUITS, type Card, type PlayingSuit } from "@/lib/cards";
 import { actionEnabled, DEFAULT_ROOM_SETTINGS, normalizeRoomSettings, penaltyMode, type RoomSettings } from "@/lib/rules";
@@ -107,6 +109,9 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
   const [game, setGame] = useState<GameState | null>(null);
   const [settings, setSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
   const [selected, setSelected] = useState<number | null>(null);
+  const [round, setRound] = useState(1);
+  const root = useRef<HTMLElement>(null);
+  const moving = useCardMotion(game ? { key: `practice-${round}`, top: topCard(game), players: [{ id: 'player', count: game.hand.length, cards: game.hand }, { id: 'opponent', count: game.opponentHand.length, cards: game.opponentHand }] } : null, root);
 
   useEffect(() => {
     let active = true;
@@ -142,7 +147,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
   }, [roomCode]);
 
   useEffect(() => {
-    if (!game || game.turn !== "opponent" || game.awaitingSuit || game.winner) return;
+    if (!game || moving || game.turn !== "opponent" || game.awaitingSuit || game.winner) return;
     const timer = window.setTimeout(() => {
       setGame((current) => {
         if (!current || current.turn !== "opponent" || current.winner) return current;
@@ -157,7 +162,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
             market: result.market,
             pendingPenalty: 0,
             penaltyType: null,
-            calledSuit: null,
+            calledSuit: current.calledSuit,
             turn: "player",
             message: amount ? `Amaka picked up ${amount}. Your turn.` : "The market is empty. Your turn.",
           };
@@ -176,7 +181,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
           if (mode === "block") {
             return { ...current, opponentHand, discard, calledSuit: null, penaltyType: null, pendingPenalty: 0, turn: "player", message: `Amaka blocked the ${card.value}-card penalty. Your turn.` };
           }
-          const pendingPenalty = current.pendingPenalty + card.value;
+          const pendingPenalty = current.pendingPenalty + (card.value === 5 ? 3 : 2);
           return { ...current, opponentHand, discard, calledSuit: null, penaltyType: card.value as 2 | 5, pendingPenalty, turn: "player", message: `Amaka stacked ${card.value}. You now face ${pendingPenalty} cards.` };
         }
 
@@ -197,7 +202,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         const activeAction = actionEnabled(card.value, settings);
         const penalty = penaltyValue(card, settings);
         if (penalty) {
-          const pendingPenalty = card.value;
+          const pendingPenalty = card.value === 5 ? 3 : 2;
           return {
             ...current,
             opponentHand,
@@ -221,7 +226,8 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
               : `Amaka played ${card.value} ${SUIT_META[card.suit].short}.`;
         return {
           ...current,
-          opponentHand: [...opponentHand, ...marketResult.drawn],
+          opponentHand,
+          hand: [...current.hand, ...marketResult.drawn],
           market: marketResult.market,
           discard,
           calledSuit: null,
@@ -233,14 +239,14 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
       });
     }, 850);
     return () => window.clearTimeout(timer);
-  }, [game, settings]);
+  }, [game, settings, moving]);
 
   if (!game) {
     return <main className="game-page"><div className="auth-wrap"><div className="auth-card"><h1>Dealing…</h1><p>Shuffling the 54-card deck.</p></div></div></main>;
   }
 
   const playCard = (index: number) => {
-    if (game.winner) return;
+    if (game.winner || moving) return;
     if (game.turn !== "player") {
       setGame((current) => current ? { ...current, message: "Hold up — Amaka is playing." } : current);
       return;
@@ -266,7 +272,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         if (mode === "block") {
           return { ...current, hand, discard, calledSuit: null, penaltyType: null, pendingPenalty: 0, turn: "opponent", message: `You blocked the ${card.value}-card penalty. Amaka's turn.` };
         }
-        const pendingPenalty = current.pendingPenalty + card.value;
+        const pendingPenalty = current.pendingPenalty + (card.value === 5 ? 3 : 2);
         return { ...current, hand, discard, calledSuit: null, penaltyType: card.value as 2 | 5, pendingPenalty, turn: "opponent", message: `You stacked ${card.value}. Amaka must defend or pick up ${pendingPenalty}.` };
       }
 
@@ -286,9 +292,9 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
           discard,
           calledSuit: null,
           penaltyType: penalty,
-          pendingPenalty: card.value,
+          pendingPenalty: card.value === 5 ? 3 : 2,
           turn: "opponent",
-          message: `${ACTIONS[penalty].name}! Amaka must defend or pick up ${card.value}.`,
+          message: `${ACTIONS[penalty].name}! Amaka must defend or pick up ${card.value === 5 ? 3 : 2}.`,
         };
       }
 
@@ -322,7 +328,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
   };
 
   const draw = () => {
-    if (game.turn !== "player" || game.awaitingSuit || game.winner) return;
+    if (moving || game.turn !== "player" || game.awaitingSuit || game.winner) return;
     const count = game.pendingPenalty || 1;
     setGame((current) => {
       if (!current) return current;
@@ -334,7 +340,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         market: result.market,
         pendingPenalty: 0,
         penaltyType: null,
-        calledSuit: null,
+        calledSuit: current.calledSuit,
         turn: "opponent",
         message: amount ? `You drew ${amount}. Amaka's turn.` : "The market is empty. Amaka's turn.",
       };
@@ -342,53 +348,29 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
   };
 
   const reset = () => {
+    setRound(value => value + 1);
     setSelected(null);
     setGame(freshGame(settings));
   };
 
-  const roomLabel = roomCode ? `ROOM ${roomCode.toUpperCase()}` : "LOCAL TABLE · DEMO";
-  const formatLabel = settings.gameType === "knockout" ? "Knockout" : "Classic";
-  const timerLabel = settings.turnTimer === "off" ? "Untimed" : `${settings.turnTimer}s timer`;
-
-  return (
-    <main className="game-page">
-      <header className="game-topbar">
-        <div className="game-brand"><span className="brand-mark"><span>W!</span></span><span>WHOT ARENA</span><small>{roomLabel}</small></div>
-        <div className="game-statuses"><span className="tag tag-lime">{game.winner ? `${game.winner} won` : game.turn === "player" ? "Your turn" : "Amaka's turn"}</span><span className="tag">{formatLabel} · {settings.initialHand} cards</span><span className="tag">{timerLabel}</span><Link className="button button-quiet" href="/play"><ArrowLeft size={14} /> Leave</Link></div>
-      </header>
-
-      <div className="game-main game-layout">
-        <section aria-label="Live Whot table" className="felt table-field">
-          <div className="turn-indicator">{game.winner ? "ROUND COMPLETE" : game.turn === "player" ? "YOUR TURN" : "AMAKA IS THINKING"}</div>
-          <div className="player-seat seat seat-top top"><span className="seat-avatar player-avatar">AM</span><span>Amaka · {game.opponentHand.length} cards</span></div>
-          <div className="table-center center-piles">
-            <div className="pile"><CardFace card={game.market[game.market.length - 1] ?? createCard("whot", 20)} hidden /><span className="pile-label">Market · {game.market.length}</span></div>
-            <div className="pile"><CardFace card={topCard(game)} size="lg" /><span className="pile-label">Discard pile</span></div>
-          </div>
-          <div className="turn-note"><strong>{game.winner ? "Round complete." : game.turn === "player" ? "Your turn." : "Amaka is thinking."}</strong></div>
-        </section>
-
-        <section className="hand-bar">
-          <div className="hand-head"><span className="hand-label">Your hand<br /><strong>{game.hand.length} cards</strong></span><span>{game.pendingPenalty ? `Penalty active · ${game.pendingPenalty} cards` : game.calledSuit ? `Called symbol · ${SUIT_META[game.calledSuit].short}` : "Click a legal card to play"}</span></div>
-          <div className="hand-cards">
-            {game.hand.map((card, index) => <CardFace card={card} key={card.id} onClick={() => playCard(index)} selected={selected === index} />)}
-          </div>
-        </section>
-
-        <div className="game-actions">
-          <p>{game.awaitingSuit ? "Choose the symbol Whot should call." : "Play a matching shape or draw one card."}</p>
-          <div className="action-group">
-            {game.awaitingSuit && <div className="choice-row">{SUITS.map((suit) => <button className="choice-button" key={suit} onClick={() => chooseSuit(suit)} type="button">Call {SUIT_META[suit].short}</button>)}</div>}
-            <button className="button button-secondary" disabled={game.turn !== "player" || game.awaitingSuit || Boolean(game.winner)} onClick={draw} type="button">Draw {game.pendingPenalty ? game.pendingPenalty : 1}</button>
-            <button className="button button-primary" onClick={reset} type="button"><RotateCcw size={15} /> New round</button>
-          </div>
-        </div>
-
-        <div className="game-bottom-grid">
-          <div className="game-message" role="status" aria-live="polite"><strong>Table call</strong>{game.message}</div>
-          <aside className="game-message"><strong>Quick help</strong><span><BookOpen size={13} style={{ verticalAlign: "-2px" }} /> Match number or symbol. {settings.whotEnabled ? "Whot is wild." : "Whot is disabled."}</span><br /><span><CircleHelp size={13} style={{ verticalAlign: "-2px" }} /> Need the full reference? <Link href="/rules" style={{ textDecoration: "underline" }}>Open rules</Link></span></aside>
-        </div>
-      </div>
-    </main>
-  );
+  const locked = moving || game.turn !== "player" || game.awaitingSuit || Boolean(game.winner);
+  return <main className="online-game" ref={root} aria-busy={moving}>
+    <header className="arena-game-header"><Link className="button button-secondary" href="/play">Leave</Link><span>whot arena<small>Practice · Untimed</small></span><button className="button button-secondary" disabled={moving} onClick={reset}>New round</button></header>
+    <section className="arena-opponents" aria-label="Opponent hand"><div className={`arena-opponent ${game.turn === "opponent" ? "has-turn" : ""}`} data-player="opponent"><p><strong>Amaka</strong><small>{game.opponentHand.length} cards</small></p><div className="arena-backs">{Array.from({length:Math.min(game.opponentHand.length,9)},(_,i)=><Image src="/cards/classic/back.svg" alt="Face down card" width={40} height={60} key={i} unoptimized style={{transform:`rotate(${(i-Math.min(game.opponentHand.length-1,8)/2)*5}deg)`}} />)}</div>{game.opponentHand.length>9 && <small>+{game.opponentHand.length-9}</small>}</div></section>
+    <section className="arena-felt" aria-label="Practice Whot table">
+      <div className="arena-turn">{game.winner ? "Round complete" : moving ? "Cards moving…" : game.turn === "player" ? "Your turn" : "Amaka’s turn"}</div>
+      <div className="arena-piles"><div data-market><CardFace card={topCard(game)} hidden size="lg"/><small>Market · {game.market.length}</small></div><div data-discard><CardFace card={topCard(game)} size="lg"/><small>Playing stack</small></div></div>
+      {game.calledSuit && <p className="arena-call">Called symbol: <strong>{SUIT_META[game.calledSuit].short}</strong></p>}
+      {game.pendingPenalty>0 && <p className="arena-penalty">Pick {game.pendingPenalty} cards</p>}
+      <p className="arena-message" aria-live="polite">{game.message}</p>
+    </section>
+    <section className="arena-your-hand" data-player="player"><div className="arena-hand-heading"><strong>Your hand <span>{game.hand.length}</span></strong><small>Round {round} · Classic</small></div>
+      <div className="arena-cards">{game.hand.map((card,i)=><CardFace card={card} key={card.id} selected={selected===i} disabled={locked || !canPlay(game,card,settings)} className={canPlay(game,card,settings) ? "can-play" : "cannot-play"} onClick={()=>setSelected(selected===i ? null : i)} />)}</div>
+      <div className="arena-controls"><button className="button button-secondary" disabled={locked} onClick={draw}>{game.pendingPenalty ? `Pick ${game.pendingPenalty} cards` : "Go to market"}</button><button className="button button-primary" disabled={locked || selected===null} onClick={()=>{if(selected!==null)playCard(selected);}}>Play selected card</button></div>
+      <p className="arena-hint">Tap a highlighted card, then play it. Swipe your hand to see more cards.</p>
+    </section>
+    {game.awaitingSuit && !moving && <section className="arena-inline-picker" aria-label="Call a symbol"><h2>Call a symbol</h2><div className="arena-shape-picker">{SUITS.map((suit,i)=><button className="button button-secondary" key={suit} onClick={()=>chooseSuit(suit)}><span>{["●","▲","✚","■","★"][i]}</span>{SUIT_META[suit].short}</button>)}</div></section>}
+    {game.winner && !moving && <section className="arena-inline-result" role="status"><div className={`arena-result ${game.winner==="You" ? "is-winner" : ""}`}>{game.winner==="You" ? "★" : "w."}</div><h2>{game.winner==="You" ? "You won!" : "Amaka won this round."}</h2><p>Ready for another?</p><button className="button button-primary" onClick={reset}>Play again</button></section>}
+    <footer className="arena-hint"><Link className="text-link" href="/rules">Table rules</Link> · Local practice against the computer</footer>
+  </main>;
 }
