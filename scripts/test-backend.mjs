@@ -6,8 +6,7 @@ const db = new PGlite();
 await db.exec(`create role anon; create role authenticated; create schema auth;
 create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}');
 create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;`);
-await db.exec(readFileSync('supabase/schema.sql','utf8').replace('create extension if not exists pgcrypto;',''));
-await db.exec(readFileSync('supabase/migrations/20260911_arena.sql','utf8'));
+await db.exec(readFileSync('supabase/setup.sql','utf8').replace('create extension if not exists pgcrypto;',''));
 const users=Array.from({length:5},(_,i)=>`00000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`);
 for(const u of users) await db.query(`insert into auth.users(id,email) values($1,$2)`,[u,`${u}@test.invalid`]);
 async function rpc(u,action,input={}) {

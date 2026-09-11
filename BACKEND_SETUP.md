@@ -4,7 +4,7 @@ The web app uses Supabase Auth, Postgres RPCs, and Realtime. It does not require
 
 ## Database
 
-Run `supabase/schema.sql` once if this is a fresh project. Then run `supabase/migrations/20260911_arena.sql` in the Supabase SQL Editor. Both are required. The migration revokes old direct game writes and installs authenticated, transactional actions. Do not rerun the old schema after the migration.
+Run `supabase/setup.sql` in the Supabase SQL Editor. This combines the base schema and secure arena migration in one transaction and works for a fresh project or the existing base schema. The migration revokes old direct game writes and installs authenticated, transactional actions. Do not rerun the old schema on its own after setup.
 
 Enable the Supabase Cron integration (`pg_cron`), then run `supabase/migrations/20260911_timers.sql`. This advances expired turns even when every player closes the app. Without Cron, an active participant processes expiration; late moves are still rejected by the database. The five-second sweep means unattended transitions can occur up to five seconds after the deadline.
 
