@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Trophy, Gamepad2, Home } from "lucide-react";
+import { History, Trophy, Gamepad2, UserRound } from "lucide-react";
 import { AccountLink } from "@/components/account-link";
 
-const navigation = [{ href: "/", label: "Home", icon: Home }, { href: "/play", label: "Play", icon: Gamepad2 }, { href: "/tournaments", label: "Tournaments", icon: Trophy }, { href: "/rules", label: "How to play", icon: BookOpen }];
+const navigation = [{ href: "/", label: "Play", icon: Gamepad2 }, { href: "/history", label: "History", icon: History }, { href: "/tournaments", label: "Tournaments", icon: Trophy }, { href: "/account", label: "Profile", icon: UserRound }];
 export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   if (path === "/game" || path === "/mockup") return <>{children}</>;
-  const active = (href: string) => href === "/" ? path === href : path.startsWith(href) || (href === "/play" && (path === "/lobby" || path.startsWith("/table/")));
+  const active = (href: string) => href === "/" ? ["/", "/play", "/lobby"].includes(path) || path.startsWith("/table/") : path.startsWith(href) || (href === "/play" && (path === "/lobby" || path.startsWith("/table/")));
   return <div className="app-frame">
     <a href="#main-content" className="skip-link">Skip to content</a>
     <header className="site-header">

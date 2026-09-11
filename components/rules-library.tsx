@@ -22,9 +22,9 @@ export function RulesLibrary() {
       </div>
       <ScreenHeader
         action={<Link className="button button-secondary" href="/play">Back to play</Link>}
-        description="The familiar shapes, the special calls, and the little rules every household plays differently."
+        description="Match the number or symbol. Empty your hand to win."
         kicker="How to play"
-        title="A little refresher."
+        title="How to play"
       />
 
       <div className="rules-layout">

@@ -11,7 +11,7 @@ import { createTournament } from "@/lib/supabase/actions";
 
 export function TournamentCreate() {
   const router = useRouter();
-  const [name, setName] = useState("Lagos After Dark");
+  const [name, setName] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [maxPlayers, setMaxPlayers] = useState("32");
   const [settings, setSettings] = useState<RoomSettings>({ ...DEFAULT_ROOM_SETTINGS, gameType: "knockout" });
@@ -56,7 +56,7 @@ export function TournamentCreate() {
         action={<Link className="button button-secondary" href="/tournaments">Back to tournaments</Link>}
         description="Give your event a name, pick a time, and invite the competition."
         kicker="Host an event"
-        title="Something worth showing up for."
+        title="Create tournament"
       />
 
       <div className="settings-layout builder-settings-layout">
@@ -67,7 +67,7 @@ export function TournamentCreate() {
         </article>
 
         <form className="panel settings-form form-panel builder-form" onSubmit={submit}>
-          <p className="screen-kicker">01 · Event details</p><h2>The first invitation.</h2>
+          <h2>Event details</h2>
           <div className="form-grid">
             <div className="form-field full">
               <label htmlFor="tournament-name">Event name</label>

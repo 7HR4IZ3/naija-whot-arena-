@@ -21,3 +21,15 @@
 .arena-whot-want-symbol{width:20px;height:20px;border-radius:50%;font-size:13px}
 .arena-whot-want-label{display:block;color:#526657;font-size:10px;font-weight:700;line-height:1}
 @media(max-width:600px){.arena-whot-want{top:10px;right:10px;padding:3px 6px 3px 4px}.arena-whot-want-symbol{width:18px;height:18px;font-size:12px}.arena-whot-want-label{font-size:9px}}
+/* One turn indicator, quiet hand surface, and readable mobile controls. */
+.online-game .arena-your-hand,.online-game .arena-your-hand.is-your-turn{background:transparent;box-shadow:none;padding:12px 0}
+.online-game .arena-your-hand .arena-cards{background:transparent;border:0;box-shadow:none}
+.online-game .arena-turn-badge{display:none}
+.online-game .arena-felt{border-radius:24px;padding:24px 16px;min-height:240px}
+.online-game .arena-turn{font-size:15px;font-weight:650}
+.online-game .arena-hint,.online-game .arena-piles small,.online-game .arena-hand-heading small{font-size:13px}
+.online-game .arena-market-pile.is-required .arena-market-button{animation:none;box-shadow:0 0 0 2px #b0904380}
+.online-game .arena-whot-want{min-height:28px}
+.online-game .arena-whot-want-label{font-size:12px}
+.online-game .arena-whot-want-label:before{content:"Wants ";font-weight:400}
+@media(max-width:600px){.online-game .arena-controls{position:sticky;bottom:env(safe-area-inset-bottom);z-index:5;background:#f7f5ee;padding:10px 0}.online-game .arena-controls button{font-size:14px;min-height:48px}.online-game .arena-felt{min-height:230px;margin-bottom:14px}.online-game .arena-opponents{min-height:85px}}

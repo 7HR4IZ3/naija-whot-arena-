@@ -447,7 +447,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
 
   const myTurn = game.turn === "player" && !game.winner && !moving;
   const locked = !myTurn || game.awaitingSuit;
-  const marketOnlyOption = myTurn && game.hand.every(card => !canPlay(game, card, settings));
+  const marketOnlyOption = !locked && game.hand.every(card => !canPlay(game, card, settings));
   const wantedSuit = game.calledSuit;
   const resultTally = game.tenderTally ?? game.marketTally;
   return <main className="online-game" ref={root} aria-busy={moving}>
@@ -462,7 +462,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
     </section>
     <section className={`arena-your-hand ${myTurn ? "is-your-turn" : ""}`} data-player="player"><div className="arena-hand-heading"><strong>Your hand <span>{game.hand.length}</span></strong><span className={`arena-turn-badge ${myTurn ? "is-active" : ""}`}>{myTurn ? "Your turn" : "Waiting"}</span><small>Round {round} · {gameTypeLabel(settings.gameType, settings.targetScore)}</small></div>
       <div className="arena-cards">{game.hand.map((card,i)=><CardFace card={card} key={card.id} selected={selected===i} disabled={locked || !canPlay(game,card,settings)} className={canPlay(game,card,settings) ? "can-play" : "cannot-play"} onClick={()=>setSelected(selected===i ? null : i)} />)}</div>
-      <div className="arena-controls"><button className="button button-secondary" disabled={locked} onClick={draw}>{game.pendingPenalty ? `Pick ${game.pendingPenalty} cards` : "Go to market"}</button><button className="button button-primary" disabled={locked || selected===null} onClick={()=>{if(selected!==null)playCard(selected);}}>Play selected card</button></div>
+      <div className="arena-controls"><button className="button button-secondary" disabled={locked} onClick={draw}>{game.pendingPenalty ? `Pick ${game.pendingPenalty} cards` : "Go to market"}</button><button className="button button-primary" disabled={locked || selected===null} onClick={()=>{if(selected!==null)playCard(selected);}}>{selected !== null ? `Play ${game.hand[selected]?.value ?? "card"}` : "Select a card"}</button></div>
       <p className="arena-hint">Tap a highlighted card, then play it. Swipe your hand to see more cards.</p>
     </section>
     {game.awaitingSuit && !moving && <GameModal title="Call a symbol"><div className="arena-shape-picker">{SUITS.map((suit,i)=><button className="button button-secondary" key={suit} onClick={()=>chooseSuit(suit)}><span>{["●","▲","✚","■","★"][i]}</span>{SUIT_META[suit].short}</button>)}</div></GameModal>}
