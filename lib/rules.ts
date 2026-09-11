@@ -1,5 +1,6 @@
 export type GameType = "classic" | "knockout" | "tender";
 export type DrawMode = "one" | "until-playable";
+export type EmptyMarketMode = "score" | "recycle";
 export type TurnTimer = "off" | "10" | "15" | "30";
 export type PenaltyMode = "stack" | "block" | "none";
 
@@ -12,6 +13,7 @@ export type RoomSettings = {
   gameType: GameType;
   initialHand: number;
   drawMode: DrawMode;
+  emptyMarketMode: EmptyMarketMode;
   turnTimer: TurnTimer;
   targetScore: 50 | 100 | 200;
   clockwise: boolean;
@@ -32,6 +34,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   gameType: "classic",
   initialHand: 6,
   drawMode: "one",
+  emptyMarketMode: "score",
   turnTimer: "10",
   targetScore: 100,
   clockwise: true,
@@ -73,6 +76,7 @@ export const ROOM_PRESETS: Array<{ id: RoomPreset; label: string; description: s
 
 const gameTypes: GameType[] = ["classic", "knockout", "tender"];
 const drawModes: DrawMode[] = ["one", "until-playable"];
+const emptyMarketModes: EmptyMarketMode[] = ["score", "recycle"];
 const timers: TurnTimer[] = ["off", "10", "15", "30"];
 const targets = [50, 100, 200] as const;
 const penaltyModes: PenaltyMode[] = ["stack", "block", "none"];
@@ -106,6 +110,7 @@ export function normalizeRoomSettings(value: unknown): RoomSettings {
     gameType: pick(value.gameType, gameTypes, legacyKnockout === true ? "knockout" : DEFAULT_ROOM_SETTINGS.gameType),
     initialHand: integerRangeValue(value.initialHand, MIN_INITIAL_HAND, MAX_INITIAL_HAND, DEFAULT_ROOM_SETTINGS.initialHand),
     drawMode: pick(value.drawMode, drawModes, DEFAULT_ROOM_SETTINGS.drawMode),
+    emptyMarketMode: pick(value.emptyMarketMode, emptyMarketModes, DEFAULT_ROOM_SETTINGS.emptyMarketMode),
     turnTimer: pick(value.turnTimer, timers, legacyTimer === null ? DEFAULT_ROOM_SETTINGS.turnTimer : legacyTimer ? "10" : "off"),
     targetScore: numberValue(value.targetScore, targets, DEFAULT_ROOM_SETTINGS.targetScore),
     clockwise: booleanValue(value.clockwise, DEFAULT_ROOM_SETTINGS.clockwise),
@@ -146,6 +151,12 @@ export function gameTypeDescription(gameType: GameType) {
   if (gameType === "tender") return "When the market is exhausted, the lowest hand total is eliminated and the next deal begins.";
   if (gameType === "knockout") return "Card totals accumulate; players reach the target score and leave the table.";
   return "The first player to clear their hand wins the round.";
+}
+
+export function emptyMarketDescription(mode: EmptyMarketMode) {
+  return mode === "recycle"
+    ? "Keep the top card face up and shuffle the rest of the pot into a new market."
+    : "Count hand points when everyone is blocked; the highest total loses."
 }
 
 export function deckSize(settings: Pick<RoomSettings, "whotEnabled">) {

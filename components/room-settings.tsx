@@ -1,7 +1,7 @@
 "use client";
 
 import { Settings2 } from "lucide-react";
-import { gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, ROOM_PRESETS, type RoomSettings } from "@/lib/rules";
+import { emptyMarketDescription, gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, ROOM_PRESETS, type RoomSettings } from "@/lib/rules";
 
 type RoomSettingsProps = {
   settings: RoomSettings;
@@ -87,6 +87,14 @@ export function RoomSettingsPanel({
               </select>
             </div>
             <div className="form-field">
+              <label htmlFor={`${idPrefix}-empty-market`}>When the market is empty</label>
+              <select className="form-select" id={`${idPrefix}-empty-market`} onChange={(event) => onChange({ emptyMarketMode: event.target.value as RoomSettings["emptyMarketMode"] })} value={settings.emptyMarketMode}>
+                <option value="score">Count points (highest loses)</option>
+                <option value="recycle">Recycle the pot</option>
+              </select>
+              <span className="form-helper">{emptyMarketDescription(settings.emptyMarketMode)}</span>
+            </div>
+            <div className="form-field">
               <label htmlFor={`${idPrefix}-timer`}>Turn timer</label>
               <select className="form-select" id={`${idPrefix}-timer`} onChange={(event) => onChange({ turnTimer: event.target.value as RoomSettings["turnTimer"] })} value={settings.turnTimer}>
                 <option value="off">No timer</option>
@@ -162,7 +170,7 @@ export function RoomSettingsPanel({
           </div>
         </details>
 
-        <div className="settings-footnote"><strong>Current preset:</strong> {gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.pickTwoEnabled ? penaltyModeLabel(settings.pickTwoMode) : "2 disabled"} · {settings.pickThreeEnabled ? penaltyModeLabel(settings.pickThreeMode) : "5 disabled"}.</div>
+        <div className="settings-footnote"><strong>Current preset:</strong> {gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.emptyMarketMode === "recycle" ? "recycle pot" : "highest hand loses on a blocked market"} · {settings.pickTwoEnabled ? penaltyModeLabel(settings.pickTwoMode) : "2 disabled"} · {settings.pickThreeEnabled ? penaltyModeLabel(settings.pickThreeMode) : "5 disabled"}.</div>
       </div>
     </details>
   );

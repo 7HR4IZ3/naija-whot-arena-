@@ -187,7 +187,7 @@ function HouseRules() {
             <tr><td>End calls</td><td>“Semi-last” and “last card” required</td><td>No calls; the interface can still show two-card and one-card alerts.</td></tr>
             <tr><td>Timer</td><td>10 seconds</td><td>15–30 seconds, or untimed casual play.</td></tr>
             <tr><td>Deck size</td><td>One 54-card deck</td><td>Two decks for large rooms or longer games.</td></tr>
-            <tr><td>Scoring</td><td>First empty hand wins</td><td>Use knockout scoring, or Tender: the lowest active hand total leaves when the market is exhausted.</td></tr>
+            <tr><td>Market exhaustion</td><td>Count points; the highest hand total loses</td><td>Recycle the pot: keep the facing card and shuffle everything underneath into the market. Tender still eliminates the lowest total when scoring is selected.</td></tr>
           </tbody>
         </table>
       </div>

@@ -292,7 +292,7 @@ begin
 end $$;
 
 create or replace function arena_private.rules(v jsonb) returns jsonb language plpgsql as $$
-declare d jsonb := '{"gameType":"classic","initialHand":6,"drawMode":"one","turnTimer":"10","targetScore":100,"clockwise":true,"endCalls":true,"starDouble":true,"whotEnabled":true,"whotCallsSuit":true,"holdOnEnabled":true,"pickTwoEnabled":true,"pickTwoMode":"stack","pickThreeEnabled":true,"pickThreeMode":"stack","suspensionEnabled":true,"generalMarketEnabled":true}'; k text;
+declare d jsonb := '{"gameType":"classic","initialHand":6,"drawMode":"one","emptyMarketMode":"score","turnTimer":"10","targetScore":100,"clockwise":true,"endCalls":true,"starDouble":true,"whotEnabled":true,"whotCallsSuit":true,"holdOnEnabled":true,"pickTwoEnabled":true,"pickTwoMode":"stack","pickThreeEnabled":true,"pickThreeMode":"stack","suspensionEnabled":true,"generalMarketEnabled":true}'; k text;
 begin
  if v is null then return d; end if;
  if jsonb_typeof(v)<>'object' then raise exception 'Invalid rules'; end if;
@@ -302,7 +302,7 @@ begin
    d:=jsonb_set(d,array[k],v->k);
   end if;
  end loop;
- if d->>'gameType' not in ('classic','knockout') or d->>'drawMode' not in ('one','until-playable')
+ if d->>'gameType' not in ('classic','knockout') or d->>'drawMode' not in ('one','until-playable') or d->>'emptyMarketMode' not in ('score','recycle')
  or d->>'turnTimer' not in ('off','10','15','30') or d->>'pickTwoMode' not in ('stack','block','none')
  or d->>'pickThreeMode' not in ('stack','block','none') or (d->>'initialHand')::int not between 3 and 6
  or (d->>'targetScore')::int not in (50,100,200) then raise exception 'Invalid rules'; end if;
@@ -364,7 +364,7 @@ create or replace function arena_private.draw(s jsonb,idx int,amount int) return
 declare d jsonb:=s->'deck'; pile jsonb:=s->'discard'; h jsonb:=s->'players'->idx->'hand'; i int;
 begin
  for i in 1..amount loop
-  if jsonb_array_length(d)=0 and jsonb_array_length(pile)>1 then
+  if jsonb_array_length(d)=0 and jsonb_array_length(pile)>1 and coalesce(s->'rules'->>'emptyMarketMode','score')='recycle' then
    d:=arena_private.shuffle(pile-(jsonb_array_length(pile)-1)); pile:=jsonb_build_array(pile->(jsonb_array_length(pile)-1));
   end if;
   exit when jsonb_array_length(d)=0;
@@ -497,7 +497,7 @@ begin
   if n=1 and (s->>'penalty')::int=0 and s->'rules'->>'drawMode'='until-playable' then
    for j in 1..54 loop
     exit when exists(select 1 from jsonb_array_elements(s->'players'->idx->'hand') where arena_private.playable(s,value));
-    exit when jsonb_array_length(s->'deck')=0 and jsonb_array_length(s->'discard')<=1;
+    exit when jsonb_array_length(s->'deck')=0 and (jsonb_array_length(s->'discard')<=1 or coalesce(s->'rules'->>'emptyMarketMode','score')<>'recycle');
     s:=arena_private.draw(s,idx,1);
    end loop;
   end if;
@@ -510,7 +510,7 @@ begin
   if (s->>'passes')::int>=active_count then
    select p.value->>'id' into win from jsonb_array_elements(s->'players') p where not (p.value->>'eliminated')::boolean
    order by (select coalesce(sum((c.value->>'score')::int),0) from jsonb_array_elements(p.value->'hand') c),p.value->>'id' limit 1;
-   s:=s||'{"message":"Market blocked. Lowest hand score wins; tied scores use seat identity order."}'::jsonb;
+   s:=s||'{"message":"Market blocked. Highest hand score loses; tied scores use seat identity order."}'::jsonb;
   end if;
  else raise exception 'Unknown move'; end if;
  s:=s||jsonb_build_object('turn',idx,'event',event,'deadline',case when s->'rules'->>'turnTimer'='off' then null else now()+((s->'rules'->>'turnTimer')::int*interval '1 second') end);
@@ -693,7 +693,7 @@ alter table public.room_players drop constraint if exists room_players_seat_chec
 alter table public.room_players add constraint room_players_seat_check check (seat between 1 and 8);
 
 create or replace function arena_private.rules(v jsonb) returns jsonb language plpgsql as $$
-declare d jsonb := '{"gameType":"classic","initialHand":6,"drawMode":"one","turnTimer":"10","targetScore":100,"clockwise":true,"endCalls":true,"starDouble":true,"whotEnabled":true,"whotCallsSuit":true,"holdOnEnabled":true,"pickTwoEnabled":true,"pickTwoMode":"stack","pickThreeEnabled":true,"pickThreeMode":"stack","suspensionEnabled":true,"generalMarketEnabled":true}'; k text;
+declare d jsonb := '{"gameType":"classic","initialHand":6,"drawMode":"one","emptyMarketMode":"score","turnTimer":"10","targetScore":100,"clockwise":true,"endCalls":true,"starDouble":true,"whotEnabled":true,"whotCallsSuit":true,"holdOnEnabled":true,"pickTwoEnabled":true,"pickTwoMode":"stack","pickThreeEnabled":true,"pickThreeMode":"stack","suspensionEnabled":true,"generalMarketEnabled":true}'; k text;
 begin
  if v is null then return d; end if;
  if jsonb_typeof(v)<>'object' then raise exception 'Invalid rules'; end if;
@@ -703,7 +703,7 @@ begin
    d:=jsonb_set(d,array[k],v->k);
   end if;
  end loop;
- if d->>'gameType' not in ('classic','knockout','tender') or d->>'drawMode' not in ('one','until-playable')
+ if d->>'gameType' not in ('classic','knockout','tender') or d->>'drawMode' not in ('one','until-playable') or d->>'emptyMarketMode' not in ('score','recycle')
  or d->>'turnTimer' not in ('off','10','15','30') or d->>'pickTwoMode' not in ('stack','block','none')
  or d->>'pickThreeMode' not in ('stack','block','none') or (d->>'initialHand')::int not between 3 and 12
  or (d->>'targetScore')::int not in (50,100,200) then raise exception 'Invalid rules'; end if;
@@ -837,7 +837,7 @@ begin
   if n=1 and (s->>'penalty')::int=0 and s->'rules'->>'drawMode'='until-playable' then
    for j in 1..54 loop
     exit when exists(select 1 from jsonb_array_elements(s->'players'->idx->'hand') where arena_private.playable(s,value));
-    exit when jsonb_array_length(s->'deck')=0 and jsonb_array_length(s->'discard')<=1;
+    exit when jsonb_array_length(s->'deck')=0 and (jsonb_array_length(s->'discard')<=1 or coalesce(s->'rules'->>'emptyMarketMode','score')<>'recycle');
     s:=arena_private.draw(s,idx,1);
    end loop;
   end if;
@@ -853,7 +853,7 @@ begin
    else
     select p.value->>'id' into win from jsonb_array_elements(s->'players') p where not (p.value->>'eliminated')::boolean
     order by (select coalesce(sum((c.value->>'score')::int),0) from jsonb_array_elements(p.value->'hand') c),p.value->>'id' limit 1;
-    s:=s||'{"message":"Market blocked. Lowest hand score wins; tied scores use seat identity order."}'::jsonb;
+    s:=s||'{"message":"Market blocked. Highest hand score loses; tied scores use seat identity order."}'::jsonb;
    end if;
   end if;
  else raise exception 'Unknown move'; end if;

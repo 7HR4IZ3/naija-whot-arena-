@@ -27,6 +27,7 @@ type GameState = {
   winner: string | null;
   passes: number;
   tenderTally?: Array<{ name: string; score: number; eliminated: boolean }>;
+  marketTally?: Array<{ name: string; score: number; eliminated: boolean }>;
 };
 
 function freshGame(settings: RoomSettings): GameState {
@@ -59,6 +60,17 @@ function drawCards(market: Card[], count: number) {
   return { drawn, market: nextMarket };
 }
 
+function refillMarket(game: GameState, settings: RoomSettings) {
+  if (game.market.length > 0 || settings.emptyMarketMode !== "recycle" || game.discard.length <= 1) {
+    return { game, recycled: false };
+  }
+  const top = topCard(game);
+  return {
+    game: { ...game, market: shuffle(game.discard.slice(0, -1)), discard: top ? [top] : game.discard },
+    recycled: true,
+  };
+}
+
 function topCard(game: GameState) {
   return game.discard[game.discard.length - 1];
 }
@@ -75,20 +87,35 @@ function canPlay(game: GameState, card: Card, settings: RoomSettings) {
   return isPlayable(card, top, game.calledSuit);
 }
 
-function drawForTurn(game: GameState, hand: Card[], count: number, settings: RoomSettings) {
-  if (count > 1 || game.pendingPenalty > 0 || settings.drawMode === "one") return drawCards(game.market, count);
-
-  let market = [...game.market];
+function drawForTurn(game: GameState, hand: Card[], count: number, settings: RoomSettings, forceOne = false) {
+  let working = game;
   const drawn: Card[] = [];
-  while (market.length > 0) {
-    const result = drawCards(market, 1);
-    if (!result.drawn.length) break;
+  let recycled = false;
+  const takeOne = () => {
+    const refill = refillMarket(working, settings);
+    working = refill.game;
+    recycled ||= refill.recycled;
+    const result = drawCards(working.market, 1);
+    if (!result.drawn.length) return false;
     drawn.push(result.drawn[0]);
-    market = result.market;
-    const candidate = { ...game, hand: [...hand, ...drawn], market };
+    working = { ...working, market: result.market };
+    return true;
+  };
+
+  if (forceOne || count > 1 || game.pendingPenalty > 0 || settings.drawMode === "one") {
+    for (let index = 0; index < count; index += 1) {
+      if (!takeOne()) break;
+    }
+    return { drawn, market: working.market, discard: working.discard, recycled };
+  }
+
+  while (true) {
+    if (working.market.length === 0 && (settings.emptyMarketMode !== "recycle" || working.discard.length <= 1)) break;
+    if (!takeOne()) break;
+    const candidate = { ...working, hand: [...hand, ...drawn] };
     if (drawn.some((card) => canPlay(candidate, card, settings))) break;
   }
-  return { drawn, market };
+  return { drawn, market: working.market, discard: working.discard, recycled };
 }
 
 function pickCalledSuit(hand: Card[]): PlayingSuit {
@@ -129,6 +156,23 @@ function resolveTender(game: GameState): GameState {
       { name: "Amaka", score: amaka, eliminated: eliminated === "Amaka" },
     ].sort((a, b) => a.score - b.score),
     message: `Tender round complete. ${eliminated} had the lowest hand total (${Math.min(you, amaka)}) and was eliminated.`,
+  };
+}
+
+function resolveBlockedRound(game: GameState): GameState {
+  const you = handScore(game.hand);
+  const amaka = handScore(game.opponentHand);
+  const winner = you <= amaka ? "You" : "Amaka";
+  const loser = winner === "You" ? "Amaka" : "You";
+  return {
+    ...game,
+    passes: 0,
+    winner,
+    marketTally: [
+      { name: "You", score: you, eliminated: loser === "You" },
+      { name: "Amaka", score: amaka, eliminated: loser === "Amaka" },
+    ].sort((a, b) => b.score - a.score),
+    message: `Market blocked. ${loser} loses with ${loser === "You" ? you : amaka} points; ${winner} wins the round.`,
   };
 }
 
@@ -187,14 +231,18 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
             ...current,
             opponentHand: [...current.opponentHand, ...result.drawn],
             market: result.market,
+            discard: result.discard,
             pendingPenalty: 0,
             penaltyType: null,
             calledSuit: current.calledSuit,
             turn: "player",
             passes: amount ? 0 : current.passes + 1,
-            message: amount ? `Amaka picked up ${amount}. Your turn.` : "The market is empty. Your turn.",
+            message: amount
+              ? `${result.recycled ? "The pot was shuffled into the market. " : ""}Amaka picked up ${amount}. Your turn.`
+              : "The market is empty. Your turn.",
           };
-          return settings.gameType === "tender" && next.passes >= 2 ? resolveTender(next) : next;
+          if (next.passes < 2) return next;
+          return settings.gameType === "tender" ? resolveTender(next) : resolveBlockedRound(next);
         }
 
         const card = current.opponentHand[cardIndex];
@@ -246,7 +294,9 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
           };
         }
 
-        const marketResult = activeAction && card.value === 14 ? drawCards(current.market, 1) : { drawn: [], market: current.market };
+        const marketResult = activeAction && card.value === 14
+          ? drawForTurn(current, current.hand, 1, settings, true)
+          : { drawn: [], market: current.market, discard: current.discard, recycled: false };
         const call = finishCall(opponentHand.length, "Amaka", settings);
         const actionMessage = activeAction && card.value === 1
           ? "Hold On — Amaka goes again."
@@ -260,13 +310,13 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
           opponentHand,
           hand: [...current.hand, ...marketResult.drawn],
           market: marketResult.market,
-          discard,
+          discard: [...marketResult.discard, card],
           calledSuit: null,
           penaltyType: null,
           pendingPenalty: 0,
           turn: activeAction && (card.value === 1 || card.value === 8 || card.value === 14) ? "opponent" : "player",
           passes: 0,
-          message: [call, actionMessage].filter(Boolean).join(" "),
+          message: [marketResult.recycled ? "The pot was shuffled into the market." : "", call, actionMessage].filter(Boolean).join(" "),
         };
       });
     }, 850);
@@ -331,7 +381,9 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         };
       }
 
-      const marketResult = activeAction && card.value === 14 ? drawCards(current.market, 1) : { drawn: [], market: current.market };
+      const marketResult = activeAction && card.value === 14
+        ? drawForTurn(current, current.opponentHand, 1, settings, true)
+        : { drawn: [], market: current.market, discard: current.discard, recycled: false };
       const call = finishCall(hand.length, "You", settings);
       const actionMessage = activeAction && card.value === 1
         ? "Hold On — you go again."
@@ -345,13 +397,13 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         hand,
         opponentHand: marketResult.drawn.length ? [...current.opponentHand, ...marketResult.drawn] : current.opponentHand,
         market: marketResult.market,
-        discard,
+        discard: [...marketResult.discard, card],
         calledSuit: null,
         penaltyType: null,
         pendingPenalty: 0,
         turn: activeAction && (card.value === 1 || card.value === 8 || card.value === 14) ? "player" : "opponent",
         passes: 0,
-        message: [call, actionMessage].filter(Boolean).join(" "),
+        message: [marketResult.recycled ? "The pot was shuffled into the market." : "", call, actionMessage].filter(Boolean).join(" "),
       };
     });
   };
@@ -372,14 +424,18 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         ...current,
         hand: [...current.hand, ...result.drawn],
         market: result.market,
+        discard: result.discard,
         pendingPenalty: 0,
         penaltyType: null,
         calledSuit: current.calledSuit,
         turn: "opponent",
         passes: amount ? 0 : current.passes + 1,
-        message: amount ? `You drew ${amount}. Amaka's turn.` : "The market is empty. Amaka's turn.",
+        message: amount
+          ? `${result.recycled ? "The pot was shuffled into the market. " : ""}You drew ${amount}. Amaka's turn.`
+          : "The market is empty. Amaka's turn.",
       };
-      return settings.gameType === "tender" && next.passes >= 2 ? resolveTender(next) : next;
+      if (next.passes < 2) return next;
+      return settings.gameType === "tender" ? resolveTender(next) : resolveBlockedRound(next);
     });
   };
 
@@ -392,6 +448,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
   const myTurn = game.turn === "player" && !game.winner && !moving;
   const locked = !myTurn || game.awaitingSuit;
   const wantedSuit = game.calledSuit;
+  const resultTally = game.tenderTally ?? game.marketTally;
   return <main className="online-game" ref={root} aria-busy={moving}>
     <header className="arena-game-header"><Link className="button button-secondary" href="/play">Leave</Link><span>whot arena<small>Practice · Untimed</small></span><button className="button button-secondary" disabled={moving} onClick={reset}>New round</button></header>
     <section className="arena-opponents" aria-label="Opponent hand"><div className={`arena-opponent ${game.turn === "opponent" ? "has-turn" : ""}`} data-player="opponent"><p><strong>Amaka</strong><small>{game.opponentHand.length} cards</small></p><div className="arena-backs">{Array.from({length:Math.min(game.opponentHand.length,9)},(_,i)=><Image src="/cards/classic/back.svg" alt="Face down card" width={40} height={60} key={i} unoptimized style={{transform:`rotate(${(i-Math.min(game.opponentHand.length-1,8)/2)*5}deg)`}} />)}</div>{game.opponentHand.length>9 && <small>+{game.opponentHand.length-9}</small>}</div></section>
@@ -408,7 +465,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
       <p className="arena-hint">Tap a highlighted card, then play it. Swipe your hand to see more cards.</p>
     </section>
     {game.awaitingSuit && !moving && <GameModal title="Call a symbol"><div className="arena-shape-picker">{SUITS.map((suit,i)=><button className="button button-secondary" key={suit} onClick={()=>chooseSuit(suit)}><span>{["●","▲","✚","■","★"][i]}</span>{SUIT_META[suit].short}</button>)}</div></GameModal>}
-    {game.winner && !moving && <GameModal title={game.winner==="You" ? "You won!" : "Amaka won this round."}><div className={`arena-result ${game.winner==="You" ? "is-winner" : ""}`}>{game.winner==="You" ? "★" : "w."}</div>{game.tenderTally && <div className="arena-tender-tally">{game.tenderTally.map(player => <div className={`arena-tender-row ${player.eliminated ? "is-eliminated" : ""}`} key={player.name}><span><strong>{player.name}</strong><small>{player.eliminated ? "Eliminated" : "Still in"}</small></span><b>{player.score}</b></div>)}</div>}<p>Ready for another?</p><button className="button button-primary" onClick={reset}>Play again</button><Link className="text-link" href="/play">Back to play</Link></GameModal>}
+    {game.winner && !moving && <GameModal title={game.winner==="You" ? "You won!" : "Amaka won this round."}><div className={`arena-result ${game.winner==="You" ? "is-winner" : ""}`}>{game.winner==="You" ? "★" : "w."}</div>{resultTally && <><p className="arena-tender-intro">{game.marketTally ? "The market finished. The highest hand total loses." : "The market finished. The lowest hand total is eliminated."}</p><div className="arena-tender-tally">{resultTally.map(player => <div className={`arena-tender-row ${player.eliminated ? "is-eliminated" : ""}`} key={player.name}><span><strong>{player.name}</strong><small>{player.eliminated ? (game.marketTally ? "Highest total · loses" : "Eliminated") : "Still in"}</small></span><b>{player.score}</b></div>)}</div></>}<p>{game.message}</p><p>Ready for another?</p><button className="button button-primary" onClick={reset}>Play again</button><Link className="text-link" href="/play">Back to play</Link></GameModal>}
     <footer className="arena-hint"><Link className="text-link" href="/rules">Table rules</Link> · Local practice against the computer</footer>
   </main>;
 }
