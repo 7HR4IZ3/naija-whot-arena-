@@ -455,7 +455,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
     <section className="arena-felt" aria-label="Practice Whot table">
       <div className="arena-turn">{game.winner ? "Round complete" : moving ? "Cards moving…" : game.turn === "player" ? "Your turn" : "Amaka’s turn"}</div>
       <div className="arena-piles"><div data-market><CardFace card={topCard(game)} hidden size="lg"/><small>Market · {game.market.length}</small></div><div data-discard><CardFace card={topCard(game)} size="lg"/><small>Playing stack</small></div></div>
-      {wantedSuit && <div className="arena-whot-want" role="status" aria-label={`Whot wants ${SUIT_META[wantedSuit].short}. Play that symbol or another Whot.`} style={{ borderColor: SUIT_META[wantedSuit].color }}><span className="arena-whot-want-symbol" style={{ color: SUIT_META[wantedSuit].color }}>{SUIT_SYMBOLS[wantedSuit]}</span><span><small>Whot wants</small><strong>{SUIT_META[wantedSuit].short}</strong><em>Match this symbol or play another Whot</em></span></div>}
+      {wantedSuit && <div className="arena-whot-want" role="status" aria-label={`Whot wants ${SUIT_META[wantedSuit].short}. Play that symbol or another Whot.`} style={{ borderColor: SUIT_META[wantedSuit].color }}><span aria-hidden="true" className="arena-whot-want-symbol" style={{ color: SUIT_META[wantedSuit].color }}>{SUIT_SYMBOLS[wantedSuit]}</span><span className="arena-whot-want-label">{SUIT_META[wantedSuit].short}</span></div>}
       {game.pendingPenalty>0 && <p className="arena-penalty">Pick {game.pendingPenalty} cards</p>}
       <p className="arena-message" aria-live="polite">{game.message}</p>
     </section>
