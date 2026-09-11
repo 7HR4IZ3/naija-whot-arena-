@@ -534,7 +534,7 @@ end $$;
 
 create or replace function public.arena(action text,input jsonb default '{}') returns jsonb
 language plpgsql security definer set search_path=public,arena_private,pg_temp as $$
-declare uid uuid:=auth.uid(); r public.rooms; t public.tournaments; gid uuid; g arena_private.games; ps jsonb; out jsonb; cfg jsonb; n int; seat_no int; code text; nm text; req uuid; prior jsonb; lock_key text; i int; roster jsonb;
+declare uid uuid:=auth.uid(); r public.rooms; t public.tournaments; gid uuid; g arena_private.games; ps jsonb; out jsonb; cfg jsonb; n int; seat_no int; code text; nm text; req uuid; prior jsonb; lock_key text; i int; roster jsonb; active_matches jsonb; completed_matches jsonb;
 begin
  if action='health' then return '{"schemaVersion":1}'::jsonb; end if;
  if uid is null then raise exception 'Sign in to continue'; end if;
@@ -663,9 +663,20 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('id',gg.id,'round',gg.round_no,'status',gg.state->>'status','winner',gg.state->>'winner','players',(select jsonb_agg(jsonb_build_object('id',value->>'id','name',value->>'name')) from jsonb_array_elements(gg.state->'players'))) order by gg.round_no,gg.id),'[]') into roster from arena_private.games gg where tournament_id=t.id;
   out:=jsonb_build_object('id',t.id,'name',t.name,'host',t.host_id,'me',uid,'startsAt',t.starts_at,'maxPlayers',t.max_players,'rules',t.rule_config,'status',t.status,'players',ps,'matches',roster);
  elsif action='history' then
-  select coalesce(jsonb_agg(x order by x.created_at desc),'[]') into ps from (select rr.game_id,rr.score,rr.won,rr.created_at,gg.tournament_id,gg.room_id from arena_private.results rr join arena_private.games gg on gg.id=rr.game_id where rr.user_id=uid order by rr.created_at desc limit 50) x;
+  select coalesce(jsonb_agg(jsonb_build_object('game_id',g.id,'room_id',g.room_id,'room_code',r.code,'room_name',r.name,'tournament_id',g.tournament_id,'round',g.round_no,'status',g.state->>'status','turn_id',turn_player.value->>'id','turn_name',turn_player.value->>'name','my_turn',turn_player.value->>'id'=uid::text,'updated_at',g.updated_at,'message',coalesce(g.state->>'message',''),'player_count',jsonb_array_length(g.state->'players')) order by g.updated_at desc),'[]'::jsonb) into active_matches
+  from arena_private.games g
+  left join public.rooms r on r.id=g.room_id
+  left join lateral (select p.value from jsonb_array_elements(g.state->'players') with ordinality as p(value,turn_index) where p.turn_index=(g.state->>'turn')::int+1) turn_player on true
+  where g.state->>'status'='running' and exists(select 1 from jsonb_array_elements(g.state->'players') p where p->>'id'=uid::text);
+  select coalesce(jsonb_agg(jsonb_build_object('game_id',rr.game_id,'score',rr.score,'won',rr.won,'created_at',rr.created_at,'tournament_id',gg.tournament_id,'room_id',gg.room_id,'room_code',r.code,'room_name',r.name,'round',gg.round_no,'winner_id',gg.state->>'winner','winner_name',winner_player.name) order by rr.created_at desc),'[]'::jsonb) into completed_matches
+  from arena_private.results rr
+  join arena_private.games gg on gg.id=rr.game_id
+  left join public.rooms r on r.id=gg.room_id
+  left join lateral (select p.value->>'name' as name from jsonb_array_elements(gg.state->'players') p(value) where p.value->>'id'=gg.state->>'winner' limit 1) winner_player on true
+  where rr.user_id=uid;
+  ps:=completed_matches;
   select coalesce(jsonb_agg(x),'[]') into roster from (select p.display_name,count(*) games,count(*) filter(where rr.won) wins from arena_private.results rr join public.profiles p on p.id=rr.user_id group by rr.user_id,p.display_name order by wins desc,games desc limit 25) x;
-  out:=jsonb_build_object('history',ps,'leaderboard',roster);
+  out:=jsonb_build_object('active',active_matches,'completed',completed_matches,'history',ps,'leaderboard',roster);
  else raise exception 'Unknown action'; end if;
  if r.id is not null and action not in ('room','heartbeat') then perform arena_private.ping(r.id,null); end if;
  if t.id is not null and action<>'tournament' then perform arena_private.ping(null,t.id); end if;
@@ -867,7 +878,7 @@ end $$;
 
 create or replace function public.arena(action text,input jsonb default '{}') returns jsonb
 language plpgsql security definer set search_path=public,arena_private,pg_temp as $$
-declare uid uuid:=auth.uid(); r public.rooms; t public.tournaments; gid uuid; g arena_private.games; ps jsonb; out jsonb; cfg jsonb; n int; seat_no int; code text; nm text; req uuid; prior jsonb; lock_key text; i int; roster jsonb;
+declare uid uuid:=auth.uid(); r public.rooms; t public.tournaments; gid uuid; g arena_private.games; ps jsonb; out jsonb; cfg jsonb; n int; seat_no int; code text; nm text; req uuid; prior jsonb; lock_key text; i int; roster jsonb; active_matches jsonb; completed_matches jsonb;
 begin
  if action='health' then return '{"schemaVersion":2}'::jsonb; end if;
  if uid is null then raise exception 'Sign in to continue'; end if;
@@ -1001,9 +1012,20 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('id',gg.id,'round',gg.round_no,'status',gg.state->>'status','winner',gg.state->>'winner','players',(select jsonb_agg(jsonb_build_object('id',value->>'id','name',value->>'name')) from jsonb_array_elements(gg.state->'players'))) order by gg.round_no,gg.id),'[]') into roster from arena_private.games gg where tournament_id=t.id;
   out:=jsonb_build_object('id',t.id,'name',t.name,'host',t.host_id,'me',uid,'startsAt',t.starts_at,'maxPlayers',t.max_players,'rules',t.rule_config,'status',t.status,'players',ps,'matches',roster);
  elsif action='history' then
-  select coalesce(jsonb_agg(x order by x.created_at desc),'[]') into ps from (select rr.game_id,rr.score,rr.won,rr.created_at,gg.tournament_id,gg.room_id from arena_private.results rr join arena_private.games gg on gg.id=rr.game_id where rr.user_id=uid order by rr.created_at desc limit 50) x;
+  select coalesce(jsonb_agg(jsonb_build_object('game_id',g.id,'room_id',g.room_id,'room_code',r.code,'room_name',r.name,'tournament_id',g.tournament_id,'round',g.round_no,'status',g.state->>'status','turn_id',turn_player.value->>'id','turn_name',turn_player.value->>'name','my_turn',turn_player.value->>'id'=uid::text,'updated_at',g.updated_at,'message',coalesce(g.state->>'message',''),'player_count',jsonb_array_length(g.state->'players')) order by g.updated_at desc),'[]'::jsonb) into active_matches
+  from arena_private.games g
+  left join public.rooms r on r.id=g.room_id
+  left join lateral (select p.value from jsonb_array_elements(g.state->'players') with ordinality as p(value,turn_index) where p.turn_index=(g.state->>'turn')::int+1) turn_player on true
+  where g.state->>'status'='running' and exists(select 1 from jsonb_array_elements(g.state->'players') p where p->>'id'=uid::text);
+  select coalesce(jsonb_agg(jsonb_build_object('game_id',rr.game_id,'score',rr.score,'won',rr.won,'created_at',rr.created_at,'tournament_id',gg.tournament_id,'room_id',gg.room_id,'room_code',r.code,'room_name',r.name,'round',gg.round_no,'winner_id',gg.state->>'winner','winner_name',winner_player.name) order by rr.created_at desc),'[]'::jsonb) into completed_matches
+  from arena_private.results rr
+  join arena_private.games gg on gg.id=rr.game_id
+  left join public.rooms r on r.id=gg.room_id
+  left join lateral (select p.value->>'name' as name from jsonb_array_elements(gg.state->'players') p(value) where p.value->>'id'=gg.state->>'winner' limit 1) winner_player on true
+  where rr.user_id=uid;
+  ps:=completed_matches;
   select coalesce(jsonb_agg(x),'[]') into roster from (select p.display_name,count(*) games,count(*) filter(where rr.won) wins from arena_private.results rr join public.profiles p on p.id=rr.user_id group by rr.user_id,p.display_name order by wins desc,games desc limit 25) x;
-  out:=jsonb_build_object('history',ps,'leaderboard',roster);
+  out:=jsonb_build_object('active',active_matches,'completed',completed_matches,'history',ps,'leaderboard',roster);
  else raise exception 'Unknown action'; end if;
  if r.id is not null and action not in ('room','heartbeat') then perform arena_private.ping(r.id,null); end if;
  if t.id is not null and action<>'tournament' then perform arena_private.ping(null,t.id); end if;

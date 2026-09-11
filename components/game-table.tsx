@@ -447,6 +447,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
 
   const myTurn = game.turn === "player" && !game.winner && !moving;
   const locked = !myTurn || game.awaitingSuit;
+  const marketOnlyOption = myTurn && game.hand.every(card => !canPlay(game, card, settings));
   const wantedSuit = game.calledSuit;
   const resultTally = game.tenderTally ?? game.marketTally;
   return <main className="online-game" ref={root} aria-busy={moving}>
@@ -454,7 +455,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
     <section className="arena-opponents" aria-label="Opponent hand"><div className={`arena-opponent ${game.turn === "opponent" ? "has-turn" : ""}`} data-player="opponent"><p><strong>Amaka</strong><small>{game.opponentHand.length} cards</small></p><div className="arena-backs">{Array.from({length:Math.min(game.opponentHand.length,9)},(_,i)=><Image src="/cards/classic/back.svg" alt="Face down card" width={40} height={60} key={i} unoptimized style={{transform:`rotate(${(i-Math.min(game.opponentHand.length-1,8)/2)*5}deg)`}} />)}</div>{game.opponentHand.length>9 && <small>+{game.opponentHand.length-9}</small>}</div></section>
     <section className="arena-felt" aria-label="Practice Whot table">
       <div className="arena-turn">{game.winner ? "Round complete" : moving ? "Cards moving…" : game.turn === "player" ? "Your turn" : "Amaka’s turn"}</div>
-      <div className="arena-piles"><div data-market><CardFace card={topCard(game)} hidden size="lg"/><small>Market · {game.market.length}</small></div><div data-discard><CardFace card={topCard(game)} size="lg"/><small>Playing stack</small></div></div>
+      <div className="arena-piles"><div className={marketOnlyOption ? "arena-market-pile is-required" : "arena-market-pile"} data-market><button type="button" className="arena-market-button" aria-label={game.market.length ? "Draw from market" : "Resolve the empty market"} disabled={locked} onClick={draw}><CardFace card={topCard(game)} hidden size="lg"/></button><small>Market · {game.market.length}</small></div><div data-discard><CardFace card={topCard(game)} size="lg"/><small>Playing stack</small></div></div>
       {wantedSuit && <div className="arena-whot-want" role="status" aria-label={`Whot wants ${SUIT_META[wantedSuit].short}. Play that symbol or another Whot.`} style={{ borderColor: SUIT_META[wantedSuit].color }}><span aria-hidden="true" className="arena-whot-want-symbol" style={{ color: SUIT_META[wantedSuit].color }}>{SUIT_SYMBOLS[wantedSuit]}</span><span className="arena-whot-want-label">{SUIT_META[wantedSuit].short}</span></div>}
       {game.pendingPenalty>0 && <p className="arena-penalty">Pick {game.pendingPenalty} cards</p>}
       <p className="arena-message" aria-live="polite">{game.message}</p>
