@@ -8,7 +8,7 @@ import "./online-game.css";
 import { GameModal } from "@/components/game-modal";
 import { CardFace } from "@/components/card-face";
 import { ACTIONS, buildDeck, createCard, isPlayable, shuffle, SUIT_META, SUITS, type Card, type PlayingSuit } from "@/lib/cards";
-import { actionEnabled, DEFAULT_ROOM_SETTINGS, normalizeRoomSettings, penaltyMode, type RoomSettings } from "@/lib/rules";
+import { actionEnabled, DEFAULT_ROOM_SETTINGS, gameTypeLabel, normalizeRoomSettings, penaltyMode, type RoomSettings } from "@/lib/rules";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type Turn = "player" | "opponent";
@@ -25,6 +25,7 @@ type GameState = {
   awaitingSuit: boolean;
   message: string;
   winner: string | null;
+  passes: number;
 };
 
 function freshGame(settings: RoomSettings): GameState {
@@ -42,6 +43,7 @@ function freshGame(settings: RoomSettings): GameState {
     awaitingSuit: false,
     message: "Your turn. Match the 4 of Balls, or play a Whot.",
     winner: null,
+    passes: 0,
   };
 }
 
@@ -106,6 +108,23 @@ function finishCall(handLength: number, actor: string, settings: RoomSettings) {
   return "";
 }
 
+function handScore(hand: Card[]) {
+  return hand.reduce((total, card) => total + card.score, 0);
+}
+
+function resolveTender(game: GameState): GameState {
+  const you = handScore(game.hand);
+  const amaka = handScore(game.opponentHand);
+  const eliminated = you <= amaka ? "You" : "Amaka";
+  const winner = eliminated === "You" ? "Amaka" : "You";
+  return {
+    ...game,
+    passes: 0,
+    winner,
+    message: `Tender round complete. ${eliminated} had the lowest hand total (${Math.min(you, amaka)}) and was eliminated.`,
+  };
+}
+
 export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
   const [game, setGame] = useState<GameState | null>(null);
   const [settings, setSettings] = useState<RoomSettings>(DEFAULT_ROOM_SETTINGS);
@@ -157,7 +176,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
           const count = current.pendingPenalty || 1;
           const result = drawForTurn(current, current.opponentHand, count, settings);
           const amount = result.drawn.length;
-          return {
+          const next: GameState = {
             ...current,
             opponentHand: [...current.opponentHand, ...result.drawn],
             market: result.market,
@@ -165,8 +184,10 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
             penaltyType: null,
             calledSuit: current.calledSuit,
             turn: "player",
+            passes: amount ? 0 : current.passes + 1,
             message: amount ? `Amaka picked up ${amount}. Your turn.` : "The market is empty. Your turn.",
           };
+          return settings.gameType === "tender" && next.passes >= 2 ? resolveTender(next) : next;
         }
 
         const card = current.opponentHand[cardIndex];
@@ -180,10 +201,10 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         if (defending) {
           const mode = penaltyMode(card.value as 2 | 5, settings);
           if (mode === "block") {
-            return { ...current, opponentHand, discard, calledSuit: null, penaltyType: null, pendingPenalty: 0, turn: "player", message: `Amaka blocked the ${card.value}-card penalty. Your turn.` };
+          return { ...current, opponentHand, discard, calledSuit: null, penaltyType: null, pendingPenalty: 0, turn: "player", passes: 0, message: `Amaka blocked the ${card.value}-card penalty. Your turn.` };
           }
           const pendingPenalty = current.pendingPenalty + (card.value === 5 ? 3 : 2);
-          return { ...current, opponentHand, discard, calledSuit: null, penaltyType: card.value as 2 | 5, pendingPenalty, turn: "player", message: `Amaka stacked ${card.value}. You now face ${pendingPenalty} cards.` };
+          return { ...current, opponentHand, discard, calledSuit: null, penaltyType: card.value as 2 | 5, pendingPenalty, turn: "player", passes: 0, message: `Amaka stacked ${card.value}. You now face ${pendingPenalty} cards.` };
         }
 
         if (card.suit === "whot" && settings.whotEnabled) {
@@ -196,6 +217,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
             penaltyType: null,
             pendingPenalty: 0,
             turn: "player",
+            passes: 0,
             message: calledSuit ? `Amaka played Whot and called ${SUIT_META[calledSuit].short}.` : "Amaka played Whot. Your turn.",
           };
         }
@@ -212,6 +234,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
             penaltyType: penalty,
             pendingPenalty,
             turn: "player",
+            passes: 0,
             message: `${ACTIONS[penalty].name}! Defend with another ${penalty}, or pick up ${pendingPenalty}.`,
           };
         }
@@ -235,6 +258,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
           penaltyType: null,
           pendingPenalty: 0,
           turn: activeAction && (card.value === 1 || card.value === 8 || card.value === 14) ? "opponent" : "player",
+          passes: 0,
           message: [call, actionMessage].filter(Boolean).join(" "),
         };
       });
@@ -265,23 +289,23 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
       if (!current) return current;
       const hand = current.hand.filter((_, cardIndex) => cardIndex !== index);
       const discard = [...current.discard, card];
-      if (hand.length === 0) return { ...current, hand, discard, winner: "You", message: "You emptied your hand. Round won!" };
+      if (hand.length === 0) return { ...current, hand, discard, winner: "You", passes: 0, message: "You emptied your hand. Round won!" };
 
       const defending = current.pendingPenalty > 0 && card.value === current.penaltyType && current.penaltyType !== null;
       if (defending) {
         const mode = penaltyMode(card.value as 2 | 5, settings);
         if (mode === "block") {
-          return { ...current, hand, discard, calledSuit: null, penaltyType: null, pendingPenalty: 0, turn: "opponent", message: `You blocked the ${card.value}-card penalty. Amaka's turn.` };
+          return { ...current, hand, discard, calledSuit: null, penaltyType: null, pendingPenalty: 0, turn: "opponent", passes: 0, message: `You blocked the ${card.value}-card penalty. Amaka's turn.` };
         }
         const pendingPenalty = current.pendingPenalty + (card.value === 5 ? 3 : 2);
-        return { ...current, hand, discard, calledSuit: null, penaltyType: card.value as 2 | 5, pendingPenalty, turn: "opponent", message: `You stacked ${card.value}. Amaka must defend or pick up ${pendingPenalty}.` };
+        return { ...current, hand, discard, calledSuit: null, penaltyType: card.value as 2 | 5, pendingPenalty, turn: "opponent", passes: 0, message: `You stacked ${card.value}. Amaka must defend or pick up ${pendingPenalty}.` };
       }
 
       if (card.suit === "whot" && settings.whotEnabled) {
         if (settings.whotCallsSuit) {
-          return { ...current, hand, discard, calledSuit: null, awaitingSuit: true, pendingPenalty: 0, penaltyType: null, message: "Whot! Choose the symbol for the next turn." };
+          return { ...current, hand, discard, calledSuit: null, awaitingSuit: true, pendingPenalty: 0, penaltyType: null, passes: 0, message: "Whot! Choose the symbol for the next turn." };
         }
-        return { ...current, hand, discard, calledSuit: null, awaitingSuit: false, pendingPenalty: 0, penaltyType: null, turn: "opponent", message: "Whot! No symbol call this round. Amaka's turn." };
+        return { ...current, hand, discard, calledSuit: null, awaitingSuit: false, pendingPenalty: 0, penaltyType: null, turn: "opponent", passes: 0, message: "Whot! No symbol call this round. Amaka's turn." };
       }
 
       const activeAction = actionEnabled(card.value, settings);
@@ -295,6 +319,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
           penaltyType: penalty,
           pendingPenalty: card.value === 5 ? 3 : 2,
           turn: "opponent",
+          passes: 0,
           message: `${ACTIONS[penalty].name}! Amaka must defend or pick up ${card.value === 5 ? 3 : 2}.`,
         };
       }
@@ -318,6 +343,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         penaltyType: null,
         pendingPenalty: 0,
         turn: activeAction && (card.value === 1 || card.value === 8 || card.value === 14) ? "player" : "opponent",
+        passes: 0,
         message: [call, actionMessage].filter(Boolean).join(" "),
       };
     });
@@ -335,7 +361,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
       if (!current) return current;
       const result = drawForTurn(current, current.hand, count, settings);
       const amount = result.drawn.length;
-      return {
+      const next: GameState = {
         ...current,
         hand: [...current.hand, ...result.drawn],
         market: result.market,
@@ -343,8 +369,10 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
         penaltyType: null,
         calledSuit: current.calledSuit,
         turn: "opponent",
+        passes: amount ? 0 : current.passes + 1,
         message: amount ? `You drew ${amount}. Amaka's turn.` : "The market is empty. Amaka's turn.",
       };
+      return settings.gameType === "tender" && next.passes >= 2 ? resolveTender(next) : next;
     });
   };
 
@@ -365,7 +393,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
       {game.pendingPenalty>0 && <p className="arena-penalty">Pick {game.pendingPenalty} cards</p>}
       <p className="arena-message" aria-live="polite">{game.message}</p>
     </section>
-    <section className="arena-your-hand" data-player="player"><div className="arena-hand-heading"><strong>Your hand <span>{game.hand.length}</span></strong><small>Round {round} · Classic</small></div>
+    <section className="arena-your-hand" data-player="player"><div className="arena-hand-heading"><strong>Your hand <span>{game.hand.length}</span></strong><small>Round {round} · {gameTypeLabel(settings.gameType, settings.targetScore)}</small></div>
       <div className="arena-cards">{game.hand.map((card,i)=><CardFace card={card} key={card.id} selected={selected===i} disabled={locked || !canPlay(game,card,settings)} className={canPlay(game,card,settings) ? "can-play" : "cannot-play"} onClick={()=>setSelected(selected===i ? null : i)} />)}</div>
       <div className="arena-controls"><button className="button button-secondary" disabled={locked} onClick={draw}>{game.pendingPenalty ? `Pick ${game.pendingPenalty} cards` : "Go to market"}</button><button className="button button-primary" disabled={locked || selected===null} onClick={()=>{if(selected!==null)playCard(selected);}}>Play selected card</button></div>
       <p className="arena-hint">Tap a highlighted card, then play it. Swipe your hand to see more cards.</p>

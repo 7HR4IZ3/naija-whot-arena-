@@ -1,7 +1,7 @@
 "use client";
 
 import { Settings2 } from "lucide-react";
-import { gameTypeLabel, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
+import { gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
 
 type RoomSettingsProps = {
   settings: RoomSettings;
@@ -9,6 +9,7 @@ type RoomSettingsProps = {
   title?: string;
   description?: string;
   idPrefix?: string;
+  maxPlayers?: number;
 };
 
 const penaltyOptions: Array<{ value: RoomSettings["pickTwoMode"]; label: string }> = [
@@ -23,7 +24,9 @@ export function RoomSettingsPanel({
   title = "House rules",
   description = "Every switch is shown to players before they join.",
   idPrefix = "room-settings",
+  maxPlayers,
 }: RoomSettingsProps) {
+  const handLimit = maxPlayers ? maxInitialHandForPlayers(maxPlayers, settings.whotEnabled) : MAX_INITIAL_HAND;
   return (
     <details className="settings-accordion" open>
       <summary>
@@ -43,13 +46,14 @@ export function RoomSettingsPanel({
               <select className="form-select" id={`${idPrefix}-game-type`} onChange={(event) => onChange({ gameType: event.target.value as RoomSettings["gameType"] })} value={settings.gameType}>
                 <option value="classic">Classic round</option>
                 <option value="knockout">Knockout scoring</option>
+                <option value="tender">Tender elimination</option>
               </select>
+              <span className="form-helper">{gameTypeDescription(settings.gameType)}</span>
             </div>
             <div className="form-field">
               <label htmlFor={`${idPrefix}-initial-hand`}>Opening hand</label>
-              <select className="form-select" id={`${idPrefix}-initial-hand`} onChange={(event) => onChange({ initialHand: Number(event.target.value) as RoomSettings["initialHand"] })} value={settings.initialHand}>
-                {[3, 4, 5, 6].map((count) => <option key={count} value={count}>{count} cards each</option>)}
-              </select>
+              <input className="form-input" id={`${idPrefix}-initial-hand`} inputMode="numeric" max={MAX_INITIAL_HAND} min={MIN_INITIAL_HAND} onChange={(event) => onChange({ initialHand: Number(event.target.value) })} type="number" value={settings.initialHand} />
+              <span className="form-helper">{maxPlayers ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.` : `Choose ${MIN_INITIAL_HAND}–${MAX_INITIAL_HAND} cards. More cards need a smaller table.`}</span>
             </div>
             <div className="form-field">
               <label htmlFor={`${idPrefix}-draw-mode`}>When you cannot play</label>

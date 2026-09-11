@@ -9,7 +9,7 @@ import './auth-form.css';
 
 type Mode = 'signin' | 'signup' | 'forgot' | 'reset' | 'magic';
 
-export function AuthForm({ initialMode = 'signin', initialError = '' }: { initialMode?: Mode; initialError?: string }) {
+export function AuthForm({ initialMode = 'signin', initialError = '', nextPath = '/account' }: { initialMode?: Mode; initialError?: string; nextPath?: string }) {
  const router = useRouter();
  const [mode, setMode] = useState<Mode>(initialMode);
  const [email, setEmail] = useState('');
@@ -22,6 +22,7 @@ export function AuthForm({ initialMode = 'signin', initialError = '' }: { initia
  const [error, setError] = useState(initialError);
  const lock = useRef(false);
  const configured = isSupabaseConfigured();
+ const destination = nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/account';
  const title = { signin: 'Welcome back.', signup: 'Take your seat.', forgot: 'Forgot your password?', reset: 'Choose a new password.', magic: 'Sign in with a link.' }[mode];
  const switchMode = (next: Mode) => { setMode(next); setPassword(''); setConfirmation(''); setVisible(false); setError(''); setMessage(''); };
  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -36,15 +37,15 @@ export function AuthForm({ initialMode = 'signin', initialError = '' }: { initia
    if (mode === 'signin') {
     const { error } = await client.auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error;
-    setPassword(''); router.replace('/account'); router.refresh();
+    setPassword(''); router.replace(destination); router.refresh();
    } else if (mode === 'signup') {
-    const { data, error } = await client.auth.signUp({ email: email.trim(), password, options: { data: { display_name: name.trim() }, emailRedirectTo: `${location.origin}/auth/callback` } });
+    const { data, error } = await client.auth.signUp({ email: email.trim(), password, options: { data: { display_name: name.trim() }, emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(destination)}` } });
     if (error) throw error;
     setPassword(''); setConfirmation('');
-    if (data.session) { router.replace('/account'); router.refresh(); }
+    if (data.session) { router.replace(destination); router.refresh(); }
     else { setMode('signin'); setMessage('Check your email to confirm your account, then sign in with your password. If you already have an account, sign in or reset your password.'); }
    } else if (mode === 'magic') {
-    const { error } = await client.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: `${location.origin}/auth/callback` } });
+    const { error } = await client.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: `${location.origin}/auth/callback?next=${encodeURIComponent(destination)}` } });
     if (error) throw error;
     setMessage('Check your inbox for your sign-in link. Open it in this browser.');
    } else if (mode === 'forgot') {
@@ -57,7 +58,7 @@ export function AuthForm({ initialMode = 'signin', initialError = '' }: { initia
     const { error } = await client.auth.updateUser({ password });
     if (error) throw error;
     setPassword(''); setConfirmation('');
-    router.replace('/account'); router.refresh();
+    router.replace(destination); router.refresh();
    }
   } catch (e) { setError(e instanceof Error ? e.message : 'Could not connect. Please try again.'); }
   finally { lock.current = false; setBusy(false); }

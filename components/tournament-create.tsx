@@ -20,12 +20,22 @@ export function TournamentCreate() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const seats = Number(maxPlayers);
+    const start = startsAt ? new Date(startsAt) : null;
+    if (!name.trim() || !Number.isInteger(seats) || seats < 4 || seats > 128) {
+      setError("Enter an event name and choose between 4 and 128 players.");
+      return;
+    }
+    if (!start || Number.isNaN(start.getTime()) || start.getTime() <= Date.now()) {
+      setError("Choose a start time in the future.");
+      return;
+    }
     setBusy(true);
     setError("");
     const result = await createTournament({
       name: name.trim() || "New Whot Tournament",
-      startsAt: new Date(startsAt).toISOString(),
-      maxPlayers: Number(maxPlayers),
+      startsAt: start.toISOString(),
+      maxPlayers: seats,
       rules: { ...settings, registration: "open" },
     });
     setBusy(false);
@@ -69,12 +79,8 @@ export function TournamentCreate() {
             </div>
             <div className="form-field">
               <label htmlFor="tournament-cap">Player cap</label>
-              <select className="form-select" id="tournament-cap" onChange={(event) => setMaxPlayers(event.target.value)} value={maxPlayers}>
-                <option value="8">8 players</option>
-                <option value="16">16 players</option>
-                <option value="32">32 players</option>
-                <option value="64">64 players</option>
-              </select>
+              <input className="form-input" id="tournament-cap" inputMode="numeric" max="128" min="4" onChange={(event) => setMaxPlayers(event.target.value)} required step="1" type="number" value={maxPlayers} />
+              <span className="form-helper">4–128 players can register before the bracket starts.</span>
             </div>
           </div>
           <RoomSettingsPanel description="Publish a clear ruleset with the registration page so every player joins with the same expectations." idPrefix="tournament" onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))} settings={settings} title="Published rules" />

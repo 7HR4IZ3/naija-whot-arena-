@@ -14,6 +14,9 @@ async function rpc(u,action,input={}) {
  return (await db.query(`select public.arena($1,$2) result`,[action,JSON.stringify({requestId:crypto.randomUUID(),...input})])).rows[0].result;
 }
 const room=await rpc(users[0],'createRoom',{name:'Test',maxPlayers:2,rules:{turnTimer:'off'}});
+const largeRoom=await rpc(users[0],'createRoom',{name:'Eight seat test',maxPlayers:8,rules:{turnTimer:'off',initialHand:6}});
+assert.equal(largeRoom.code.length,6);
+await assert.rejects(()=>rpc(users[0],'createRoom',{name:'Too many cards',maxPlayers:8,rules:{turnTimer:'off',initialHand:7}}),/hand size/);
 await rpc(users[1],'joinRoom',{code:room.code});
 await assert.rejects(()=>rpc(users[2],'joinRoom',{code:room.code}),/full/);
 await assert.rejects(()=>rpc(users[1],'startRoom',{code:room.code}),/host/);
@@ -86,6 +89,24 @@ testView=await rpc(users[1],'draw',{game:testView.id,version:testView.version});
 await db.query(`update arena_private.games set state=state||jsonb_build_object('deadline',now()-interval '1 second') where id=$1`,[testView.id]);
 await assert.rejects(()=>rpc(users[0],'draw',{game:testView.id,version:testView.version}),/expired/);
 testView=await rpc(users[1],'timeout',{game:testView.id}); assert.equal(testView.turn,1);
+// Tender mode removes the lowest active hand total when the market is exhausted,
+// then deals the remaining players into the next round.
+const tenderRoom=await rpc(users[0],'createRoom',{name:'Tender test',maxPlayers:3,rules:{turnTimer:'off',gameType:'tender'} });
+for(const u of users.slice(1,3)){await rpc(u,'joinRoom',{code:tenderRoom.code});await rpc(u,'ready',{code:tenderRoom.code,ready:true});}
+const tenderStart=await rpc(users[0],'startRoom',{code:tenderRoom.code});
+let tenderFixture=(await db.query('select state from arena_private.games where id=$1',[tenderStart.game])).rows[0].state;
+tenderFixture.players[0].hand=[{id:'low-one',suit:'circle',value:1,score:1},{id:'low-two',suit:'circle',value:2,score:2}];
+tenderFixture.players[1].hand=[{id:'mid-five',suit:'circle',value:5,score:5},{id:'mid-seven',suit:'circle',value:7,score:7}];
+tenderFixture.players[2].hand=[{id:'high-star',suit:'star',value:7,score:14},{id:'high-eight',suit:'circle',value:8,score:8}];
+tenderFixture.deck=[]; tenderFixture.discard=[{id:'tender-opening',suit:'circle',value:4,score:4}]; tenderFixture.turn=0; tenderFixture.passes=0; tenderFixture.deadline=null;
+await db.query('update arena_private.games set state=$1 where id=$2',[JSON.stringify(tenderFixture),tenderStart.game]);
+let tenderView=await rpc(users[0],'draw',{game:tenderStart.game,version:1});
+tenderView=await rpc(users[1],'draw',{game:tenderView.id,version:tenderView.version});
+tenderView=await rpc(users[2],'draw',{game:tenderView.id,version:tenderView.version});
+assert.equal(tenderView.status,'running'); assert.equal(tenderView.round,2); assert.equal(tenderView.event.type,'tender-elimination');
+assert.equal(tenderView.players.filter(p=>!p.eliminated).length,2);
+assert.equal(tenderView.players.find(p=>p.id===users[0]).eliminated,true);
 console.log(`PASS: ${simulationMoves} validated moves across 12 full games; 2–5 players, knockout, draw modes, defence modes, deck conservation, pick-three and expired turns`);
+console.log('PASS: custom 2–8 player room capacity, hand-size validation, and Tender elimination/redeal');
 console.log('PASS: schema, auth checks, ready/host/capacity guards, private hands, stale moves, idempotency, results, five-player bracket and legacy permission isolation');
 await db.close();

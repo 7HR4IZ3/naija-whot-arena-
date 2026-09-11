@@ -147,10 +147,11 @@ function Modes() {
         <table className="variant-table">
           <thead><tr><th>Mode</th><th>Players</th><th>What happens</th></tr></thead>
           <tbody>
-            <tr><td>Quick match</td><td>2–5</td><td>Jump into a live table, using the platform&apos;s default classic settings.</td></tr>
-            <tr><td>Private table</td><td>2–5</td><td>Host sets rules, shares a code, waits for players, then starts.</td></tr>
+            <tr><td>Quick match</td><td>2–8</td><td>Jump into a live table, using the platform&apos;s default classic settings.</td></tr>
+            <tr><td>Private table</td><td>2–8</td><td>Host sets seats, hand size, and house rules, shares a code, waits for players, then starts.</td></tr>
             <tr><td>Tournament</td><td>8–64</td><td>Players register before the start time; the host closes registration and runs elimination rounds.</td></tr>
             <tr><td>Knockout league</td><td>Any bracket</td><td>Play multiple rounds; the highest cumulative score is eliminated at the configured threshold, commonly 100.</td></tr>
+            <tr><td>Tender</td><td>2–8</td><td>When the market is exhausted, count active hands, eliminate the lowest total, and deal the remaining players again until one remains.</td></tr>
             <tr><td>Star / advanced</td><td>2–5</td><td>Optional table preset with star doubling, finish calls, and stricter turn timers.</td></tr>
           </tbody>
         </table>
@@ -178,7 +179,7 @@ function HouseRules() {
         <table className="variant-table">
           <thead><tr><th>Rule switch</th><th>Option A</th><th>Option B / variation</th></tr></thead>
           <tbody>
-            <tr><td>Opening hand</td><td>Six cards</td><td>Three, four, or five cards for a shorter round.</td></tr>
+            <tr><td>Opening hand</td><td>Six cards</td><td>Choose 3–12 cards; the table validates the size against the number of seats and deck.</td></tr>
             <tr><td>Drawing</td><td>Draw one and pass</td><td>Draw until playable, or draw one and immediately play if legal.</td></tr>
             <tr><td>2 / 5 penalties</td><td>Stack identical power cards</td><td>No stacking; penalty resolves immediately.</td></tr>
             <tr><td>Whot call</td><td>Whot chooses the next symbol</td><td>Whot acts as a normal 20, or can be used as a defence.</td></tr>
@@ -186,7 +187,7 @@ function HouseRules() {
             <tr><td>End calls</td><td>“Semi-last” and “last card” required</td><td>No calls; the interface can still show two-card and one-card alerts.</td></tr>
             <tr><td>Timer</td><td>10 seconds</td><td>15–30 seconds, or untimed casual play.</td></tr>
             <tr><td>Deck size</td><td>One 54-card deck</td><td>Two decks for large rooms or longer games.</td></tr>
-            <tr><td>Scoring</td><td>First empty hand wins</td><td>Accumulate penalties; eliminate at 100, then crown the last player standing.</td></tr>
+            <tr><td>Scoring</td><td>First empty hand wins</td><td>Use knockout scoring, or Tender: the lowest active hand total leaves when the market is exhausted.</td></tr>
           </tbody>
         </table>
       </div>

@@ -7,9 +7,9 @@ Repository: `7HR4IZ3/naija-whot-arena-`
 ## What is included
 
 - Quick-match local playable demo with a real 54-card deck, turn actions, Whot suit calling, penalties, and score-aware card values.
-- Private table flow with a six-character room code, player roster, ready states, host start, and Supabase Realtime hooks.
+- Private table flow with a six-character room code, player roster, ready states, host start, custom seats and opening hand sizes, and Supabase Realtime hooks.
 - Tournament creation and registration flow with public rules, player caps, waiting roster, and host start.
-- Rules library covering the core turn loop, card manifest, action cards, scoring, tournament flow, and common house-rule variants.
+- Rules library covering the core turn loop, card manifest, action cards, scoring, tournament flow, Tender elimination, and common house-rule variants.
 - Real-life-inspired SVG card faces for every card in the standard deck, adapted from the attributed `mykeels/whot-cards` artwork. The same manifest powers the card gallery and game engine.
 - Demo-first behavior: the UI works without environment variables; Supabase enables auth, room persistence, and realtime when configured.
 
@@ -48,7 +48,7 @@ The app is designed for Vercel with the Next.js App Router. Import `7HR4IZ3/naij
 
 The standard deck is 54 cards: 12 circles, 12 triangles, 9 crosses, 9 squares, 7 stars, and five Whot/Crown 20 cards. Players normally receive six cards, match the discard by number or symbol, draw one when stuck, and play clockwise. Common actions are 1 Hold On, 2 Pick Two, 5 Pick Three, 8 Suspension, 14 General Market, and 20 Whot/Crown wild. Star cards commonly score double and Whot commonly scores 20.
 
-Nigerian Whot has meaningful house-rule variation, so the product exposes stacking, timer, knockout, drawing, opening hand, finish calls, and Whot behavior as configurable rules rather than hiding them in the engine.
+Nigerian Whot has meaningful house-rule variation, so the product exposes stacking, timer, knockout, Tender elimination, drawing, opening hand, finish calls, and Whot behavior as configurable rules rather than hiding them in the engine.
 
 Research references:
 

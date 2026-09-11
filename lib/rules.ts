@@ -1,11 +1,16 @@
-export type GameType = "classic" | "knockout";
+export type GameType = "classic" | "knockout" | "tender";
 export type DrawMode = "one" | "until-playable";
 export type TurnTimer = "off" | "10" | "15" | "30";
 export type PenaltyMode = "stack" | "block" | "none";
 
+export const MIN_ROOM_PLAYERS = 2;
+export const MAX_ROOM_PLAYERS = 8;
+export const MIN_INITIAL_HAND = 3;
+export const MAX_INITIAL_HAND = 12;
+
 export type RoomSettings = {
   gameType: GameType;
-  initialHand: 3 | 4 | 5 | 6;
+  initialHand: number;
   drawMode: DrawMode;
   turnTimer: TurnTimer;
   targetScore: 50 | 100 | 200;
@@ -43,7 +48,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   generalMarketEnabled: true,
 };
 
-const gameTypes: GameType[] = ["classic", "knockout"];
+const gameTypes: GameType[] = ["classic", "knockout", "tender"];
 const drawModes: DrawMode[] = ["one", "until-playable"];
 const timers: TurnTimer[] = ["off", "10", "15", "30"];
 const targets = [50, 100, 200] as const;
@@ -65,6 +70,10 @@ function numberValue<T extends number>(value: unknown, allowed: readonly T[], fa
   return allowed.includes(value as T) ? value as T : fallback;
 }
 
+function integerRangeValue(value: unknown, min: number, max: number, fallback: number) {
+  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max ? value : fallback;
+}
+
 export function normalizeRoomSettings(value: unknown): RoomSettings {
   if (!isRecord(value)) return { ...DEFAULT_ROOM_SETTINGS };
   const legacyStacking = typeof value.stackActions === "boolean" ? value.stackActions : null;
@@ -72,7 +81,7 @@ export function normalizeRoomSettings(value: unknown): RoomSettings {
   const legacyKnockout = typeof value.knockout === "boolean" ? value.knockout : null;
   return {
     gameType: pick(value.gameType, gameTypes, legacyKnockout === true ? "knockout" : DEFAULT_ROOM_SETTINGS.gameType),
-    initialHand: numberValue(value.initialHand, [3, 4, 5, 6], DEFAULT_ROOM_SETTINGS.initialHand),
+    initialHand: integerRangeValue(value.initialHand, MIN_INITIAL_HAND, MAX_INITIAL_HAND, DEFAULT_ROOM_SETTINGS.initialHand),
     drawMode: pick(value.drawMode, drawModes, DEFAULT_ROOM_SETTINGS.drawMode),
     turnTimer: pick(value.turnTimer, timers, legacyTimer === null ? DEFAULT_ROOM_SETTINGS.turnTimer : legacyTimer ? "10" : "off"),
     targetScore: numberValue(value.targetScore, targets, DEFAULT_ROOM_SETTINGS.targetScore),
@@ -106,7 +115,37 @@ export function penaltyMode(value: 2 | 5, settings: RoomSettings): PenaltyMode {
 }
 
 export function gameTypeLabel(gameType: GameType, targetScore = 100) {
+  if (gameType === "tender") return "Tender elimination";
   return gameType === "knockout" ? `${targetScore}-point knockout` : "Classic round";
+}
+
+export function gameTypeDescription(gameType: GameType) {
+  if (gameType === "tender") return "When the market is exhausted, the lowest hand total is eliminated and the next deal begins.";
+  if (gameType === "knockout") return "Card totals accumulate; players reach the target score and leave the table.";
+  return "The first player to clear their hand wins the round.";
+}
+
+export function deckSize(settings: Pick<RoomSettings, "whotEnabled">) {
+  return settings.whotEnabled ? 54 : 49;
+}
+
+export function maxInitialHandForPlayers(players: number, whotEnabled: boolean) {
+  if (!Number.isInteger(players) || players < MIN_ROOM_PLAYERS) return MAX_INITIAL_HAND;
+  return Math.min(MAX_INITIAL_HAND, Math.floor((deckSize({ whotEnabled }) - 1) / players));
+}
+
+export function validateRoomConfiguration(maxPlayers: number, settings: RoomSettings) {
+  if (!Number.isInteger(maxPlayers) || maxPlayers < MIN_ROOM_PLAYERS || maxPlayers > MAX_ROOM_PLAYERS) {
+    return `Choose between ${MIN_ROOM_PLAYERS} and ${MAX_ROOM_PLAYERS} players.`;
+  }
+  if (!Number.isInteger(settings.initialHand) || settings.initialHand < MIN_INITIAL_HAND || settings.initialHand > MAX_INITIAL_HAND) {
+    return `Opening hand must be between ${MIN_INITIAL_HAND} and ${MAX_INITIAL_HAND} cards.`;
+  }
+  const maximum = maxInitialHandForPlayers(maxPlayers, settings.whotEnabled);
+  if (settings.initialHand > maximum) {
+    return `${maxPlayers} players can start with at most ${maximum} cards using this deck.`;
+  }
+  return null;
 }
 
 export function penaltyModeLabel(mode: PenaltyMode) {
