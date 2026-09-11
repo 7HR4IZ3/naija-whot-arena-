@@ -5,13 +5,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CardFace } from '@/components/card-face';
 import { ArenaFeedback } from '@/components/arena-feedback';
-import { SUITS, SUIT_META } from '@/lib/cards';
+import { SUITS, SUIT_META, type PlayingSuit } from '@/lib/cards';
 import { canPlay, type Game } from '@/lib/arena';
 import { gameTypeLabel } from '@/lib/rules';
 import { useArena } from '@/lib/use-arena';
 import { useCardMotion } from '@/lib/use-card-motion';
 import './online-game.css';
 import { GameModal as Modal } from '@/components/game-modal';
+
+const SUIT_SYMBOLS: Record<PlayingSuit, string> = { circle: '●', triangle: '▲', cross: '✚', square: '■', star: '★' };
 
 export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) {
  const router = useRouter();
@@ -61,6 +63,7 @@ export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) 
  const myTurn = turn?.id === game?.me && game?.status === 'running' && !me?.eliminated;
  const locked = busy || animating || !myTurn;
  const card = game?.hand.find(c => c.id === selected);
+ const wantedSuit = game?.calledSuit && SUITS.includes(game.calledSuit as PlayingSuit) ? game.calledSuit as PlayingSuit : null;
  const tenderNotice = game?.rules.gameType === 'tender' && game.event.type === 'tender-elimination' && dismissedTenderVersion !== game.version;
  const exit = game?.tournamentId ? `/tournaments/${game.tournamentId}` : roomCode ? `/table/${roomCode}` : '/play';
  const play = async (suit?: string) => {
@@ -76,10 +79,10 @@ export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) 
   {game && <><section className="arena-opponents" aria-label="Opponents">{game.players.filter(p => p.id !== game.me).map(p => <div className={`arena-opponent ${turn?.id === p.id ? 'has-turn' : ''}`} data-player={p.id} key={p.id}><p><strong>{p.name}</strong><small>{p.eliminated ? 'Eliminated' : `${p.count} card${p.count === 1 ? '' : 's'}`}</small></p><div className="arena-backs">{Array.from({ length: Math.min(p.count, 7) }, (_, i) => <Image key={i} src="/cards/classic/back.svg" alt="Face down card" width={40} height={60} unoptimized style={{ transform: `rotate(${(i - Math.min(p.count - 1, 6) / 2) * 5}deg)` }} />)}</div>{p.count > 7 && <small>+{p.count - 7}</small>}</div>)}</section>
   <section className="arena-felt"><div className="arena-turn" role="status">{game.status === 'finished' ? 'Match complete' : me?.eliminated ? 'Watching the remaining players' : myTurn ? 'Your turn' : `${turn?.name}’s turn`}{game.deadline && <span>{seconds ?? '…'}s</span>}</div>
    <div className="arena-piles"><div data-market><CardFace card={game.top} hidden size="lg" /><small>Market · {game.marketCount}</small></div><div data-discard><CardFace key={game.top.id} card={game.top} size="lg" /><small>Playing stack</small></div></div>
-   {game.calledSuit && <p className="arena-call">Called symbol: <strong>{game.calledSuit}</strong></p>}{game.penalty > 0 && <p className="arena-penalty">Pick {game.penalty} · {game.penaltyType === 2 ? game.rules.pickTwoMode : game.rules.pickThreeMode} defence</p>}
+   {wantedSuit && <div className="arena-whot-want" role="status" aria-label={`Whot wants ${SUIT_META[wantedSuit].short}. Play that symbol or another Whot.`} style={{ borderColor: SUIT_META[wantedSuit].color }}><span className="arena-whot-want-symbol" style={{ color: SUIT_META[wantedSuit].color }}>{SUIT_SYMBOLS[wantedSuit]}</span><span><small>Whot wants</small><strong>{SUIT_META[wantedSuit].short}</strong><em>Match this symbol or play another Whot</em></span></div>}{game.penalty > 0 && <p className="arena-penalty">Pick {game.penalty} · {game.penaltyType === 2 ? game.rules.pickTwoMode : game.rules.pickThreeMode} defence</p>}
    <p className="arena-message" aria-live="polite">{game.message}</p>
   </section>
-  <section className="arena-your-hand" data-player={game.me}><div className="arena-hand-heading"><strong>Your hand <span>{game.hand.length}</span></strong><small>Round {game.round} · {me?.total || 0} points</small></div>
+  <section className={`arena-your-hand ${myTurn ? 'is-your-turn' : ''}`} data-player={game.me}><div className="arena-hand-heading"><strong>Your hand <span>{game.hand.length}</span></strong><span className={`arena-turn-badge ${myTurn ? 'is-active' : ''}`}>{myTurn ? 'Your turn' : 'Waiting'}</span><small>Round {game.round} · {me?.total || 0} points</small></div>
    <div className="arena-cards">{game.hand.map(c => <CardFace key={c.id} card={c} selected={selected === c.id} disabled={locked || !canPlay(game,c)} className={canPlay(game,c) ? 'can-play' : 'cannot-play'} onClick={() => setSelected(selected === c.id ? null : c.id)} />)}</div>
    <div className="arena-controls"><button className="button button-secondary" disabled={locked} onClick={() => mutate('draw', { version: game.version })}>{game.penalty ? `Pick ${game.penalty} cards` : 'Go to market'}</button><button className="button button-primary" disabled={locked || !card || !canPlay(game,card)} onClick={() => play()}>{busy || animating ? 'Moving…' : 'Play selected card'}</button></div>
    <p className="arena-hint">{myTurn ? 'Select a highlighted card, then play it.' : 'Your hand is private. Rejoining restores your seat.'}</p>
