@@ -1,7 +1,7 @@
 "use client";
 
 import { Settings2 } from "lucide-react";
-import { gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
+import { gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, ROOM_PRESETS, type RoomSettings } from "@/lib/rules";
 
 type RoomSettingsProps = {
   settings: RoomSettings;
@@ -35,6 +35,25 @@ export function RoomSettingsPanel({
       </summary>
       <div className="settings-body">
         <p className="settings-intro">{description} Set the exact behaviour for 2 Pick Two, 5 Pick Three, 8 Suspension, and every optional power card.</p>
+
+        <div className="settings-presets" role="group" aria-label="Room presets">
+          <span className="settings-presets-label">Start with a preset</span>
+          <div className="settings-preset-grid">
+            {ROOM_PRESETS.map((preset) => (
+              <button
+                aria-pressed={settings.gameType === preset.id}
+                className={`settings-preset ${settings.gameType === preset.id ? "is-active" : ""}`}
+                key={preset.id}
+                onClick={() => onChange(preset.settings)}
+                type="button"
+              >
+                <strong>{preset.label}</strong>
+                <small>{preset.description}</small>
+              </button>
+            ))}
+          </div>
+          <span className="form-helper">You can fine-tune any rule below.</span>
+        </div>
 
         <details className="settings-section" open>
           <summary className="settings-section-heading">

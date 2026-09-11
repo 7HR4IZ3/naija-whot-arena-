@@ -48,6 +48,29 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   generalMarketEnabled: true,
 };
 
+export type RoomPreset = "classic" | "knockout" | "tender";
+
+export const ROOM_PRESETS: Array<{ id: RoomPreset; label: string; description: string; settings: Partial<RoomSettings> }> = [
+  {
+    id: "classic",
+    label: "Classic",
+    description: "First player out wins.",
+    settings: { ...DEFAULT_ROOM_SETTINGS, gameType: "classic" },
+  },
+  {
+    id: "tender",
+    label: "Tender",
+    description: "Lowest hand leaves each deal.",
+    settings: { ...DEFAULT_ROOM_SETTINGS, gameType: "tender", turnTimer: "off" },
+  },
+  {
+    id: "knockout",
+    label: "Knockout",
+    description: "Scores build to a target.",
+    settings: { ...DEFAULT_ROOM_SETTINGS, gameType: "knockout" },
+  },
+];
+
 const gameTypes: GameType[] = ["classic", "knockout", "tender"];
 const drawModes: DrawMode[] = ["one", "until-playable"];
 const timers: TurnTimer[] = ["off", "10", "15", "30"];

@@ -725,7 +725,7 @@ begin
 end $$;
 
 create or replace function arena_private.finish(gid uuid,s jsonb) returns jsonb language plpgsql as $$
-declare p jsonb; i int:=0; score int; alive int; winner text:=s->>'winner'; roster jsonb; t uuid; eliminated_id text; eliminated_score int; fresh jsonb; eliminated jsonb;
+declare p jsonb; i int:=0; score int; alive int; winner text:=s->>'winner'; roster jsonb; t uuid; eliminated_id text; eliminated_score int; fresh jsonb; eliminated jsonb; tally jsonb;
 begin
  for p in select value from jsonb_array_elements(s->'players') loop
   select coalesce(sum((value->>'score')::int),0) into score from jsonb_array_elements(p->'hand');
@@ -738,6 +738,8 @@ begin
   from jsonb_array_elements(s->'players')
   where not coalesce((value->>'eliminated')::boolean,false)
   order by (value->>'roundScore')::int,value->>'id' limit 1;
+  select coalesce(jsonb_agg(jsonb_build_object('id',value->>'id','name',value->>'name','score',(value->>'roundScore')::int,'eliminated',value->>'id'=eliminated_id) order by (value->>'roundScore')::int,value->>'id'),'[]'::jsonb)
+  into tally from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false);
   if eliminated_id is null then raise exception 'Tender table has no active players'; end if;
   i:=0;
   for p in select value from jsonb_array_elements(s->'players') loop
@@ -749,7 +751,7 @@ begin
    select jsonb_agg(value-'hand'-'roundScore') into roster from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false);
    fresh:=arena_private.deal(roster,s->'rules',(s->>'round')::int+1);
    select coalesce(jsonb_agg(value||jsonb_build_object('hand','[]'::jsonb,'eliminated',true)),'[]'::jsonb) into eliminated from jsonb_array_elements(s->'players') where coalesce((value->>'eliminated')::boolean,false);
-   return fresh||jsonb_build_object('players',(fresh->'players')||eliminated,'message',(select value->>'name' from jsonb_array_elements(s->'players') where value->>'id'=eliminated_id limit 1)||' was eliminated with '||eliminated_score||' points. Next tender round.','event',jsonb_build_object('type','tender-elimination','actor',eliminated_id));
+   return fresh||jsonb_build_object('players',(fresh->'players')||eliminated,'tenderTally',tally,'message',(select value->>'name' from jsonb_array_elements(s->'players') where value->>'id'=eliminated_id limit 1)||' was eliminated with '||eliminated_score||' points. Next tender round.','event',jsonb_build_object('type','tender-elimination','actor',eliminated_id));
   end if;
   select value->>'id' into winner from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false) limit 1;
  elsif s->'rules'->>'gameType'='knockout' then
@@ -769,6 +771,7 @@ begin
   end if;
   select value->>'id' into winner from jsonb_array_elements(s->'players') order by (value->>'total')::int,value->>'id' limit 1;
  end if;
+ if tally is not null then s:=s||jsonb_build_object('tenderTally',tally); end if;
  s:=s||jsonb_build_object('status','finished','winner',winner,'deadline',null);
  for p in select value from jsonb_array_elements(s->'players') loop
   insert into arena_private.results(game_id,user_id,score,won) values(gid,(p->>'id')::uuid,(p->>'total')::int,p->>'id'=winner) on conflict do nothing;

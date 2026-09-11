@@ -26,6 +26,7 @@ type GameState = {
   message: string;
   winner: string | null;
   passes: number;
+  tenderTally?: Array<{ name: string; score: number; eliminated: boolean }>;
 };
 
 function freshGame(settings: RoomSettings): GameState {
@@ -121,6 +122,10 @@ function resolveTender(game: GameState): GameState {
     ...game,
     passes: 0,
     winner,
+    tenderTally: [
+      { name: "You", score: you, eliminated: eliminated === "You" },
+      { name: "Amaka", score: amaka, eliminated: eliminated === "Amaka" },
+    ].sort((a, b) => a.score - b.score),
     message: `Tender round complete. ${eliminated} had the lowest hand total (${Math.min(you, amaka)}) and was eliminated.`,
   };
 }
@@ -399,7 +404,7 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
       <p className="arena-hint">Tap a highlighted card, then play it. Swipe your hand to see more cards.</p>
     </section>
     {game.awaitingSuit && !moving && <GameModal title="Call a symbol"><div className="arena-shape-picker">{SUITS.map((suit,i)=><button className="button button-secondary" key={suit} onClick={()=>chooseSuit(suit)}><span>{["●","▲","✚","■","★"][i]}</span>{SUIT_META[suit].short}</button>)}</div></GameModal>}
-    {game.winner && !moving && <GameModal title={game.winner==="You" ? "You won!" : "Amaka won this round."}><div className={`arena-result ${game.winner==="You" ? "is-winner" : ""}`}>{game.winner==="You" ? "★" : "w."}</div><p>Ready for another?</p><button className="button button-primary" onClick={reset}>Play again</button><Link className="text-link" href="/play">Back to play</Link></GameModal>}
+    {game.winner && !moving && <GameModal title={game.winner==="You" ? "You won!" : "Amaka won this round."}><div className={`arena-result ${game.winner==="You" ? "is-winner" : ""}`}>{game.winner==="You" ? "★" : "w."}</div>{game.tenderTally && <div className="arena-tender-tally">{game.tenderTally.map(player => <div className={`arena-tender-row ${player.eliminated ? "is-eliminated" : ""}`} key={player.name}><span><strong>{player.name}</strong><small>{player.eliminated ? "Eliminated" : "Still in"}</small></span><b>{player.score}</b></div>)}</div>}<p>Ready for another?</p><button className="button button-primary" onClick={reset}>Play again</button><Link className="text-link" href="/play">Back to play</Link></GameModal>}
     <footer className="arena-hint"><Link className="text-link" href="/rules">Table rules</Link> · Local practice against the computer</footer>
   </main>;
 }

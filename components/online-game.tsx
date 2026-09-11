@@ -20,6 +20,7 @@ export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) 
  const [picker, setPicker] = useState(false);
  const [leave, setLeave] = useState(false);
  const [help, setHelp] = useState(false);
+ const [dismissedTenderVersion, setDismissedTenderVersion] = useState<number | null>(null);
  const [seconds, setSeconds] = useState<number | null>(null);
  const [sound, setSound] = useState(false);
  const audio = useRef<AudioContext | null>(null);
@@ -60,6 +61,7 @@ export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) 
  const myTurn = turn?.id === game?.me && game?.status === 'running' && !me?.eliminated;
  const locked = busy || animating || !myTurn;
  const card = game?.hand.find(c => c.id === selected);
+ const tenderNotice = game?.rules.gameType === 'tender' && game.event.type === 'tender-elimination' && dismissedTenderVersion !== game.version;
  const exit = game?.tournamentId ? `/tournaments/${game.tournamentId}` : roomCode ? `/table/${roomCode}` : '/play';
  const play = async (suit?: string) => {
   if (!game || !card || locked) return;
@@ -84,6 +86,7 @@ export function OnlineGame({ id, roomCode }: { id: string; roomCode?: string }) 
   </section>
   {picker && <Modal title="Call a symbol" close={() => setPicker(false)}><div className="arena-shape-picker">{SUITS.map((s,i) => <button key={s} className="button button-secondary" onClick={() => play(s)}><span>{['●','▲','✚','■','★'][i]}</span>{SUIT_META[s].short}</button>)}</div></Modal>}
   {game.status === 'finished' && <Modal title={game.winner === game.me ? 'You won!' : 'A good round.'}><div className={`arena-result ${game.winner === game.me ? 'is-winner' : ''}`}>{game.winner === game.me ? '★' : 'w.'}</div><p>{game.players.find(p => p.id === game.winner)?.name} won the match.</p><div className="roster">{game.players.map(p => <div className="roster-row" key={p.id}><strong>{p.name}</strong><span>{p.total} points</span></div>)}</div><Link className="button button-primary" href={exit}>{game.tournamentId ? 'Back to bracket' : 'Back to table'}</Link><Link className="text-link" href="/account">Match history →</Link></Modal>}
+  {tenderNotice && <Modal title="Tender tally" close={() => setDismissedTenderVersion(game.version)}><p className="arena-tender-intro">The market finished. Every active hand was counted.</p><div className="arena-tender-tally">{(game.tenderTally || []).map(player => <div className={`arena-tender-row ${player.eliminated ? 'is-eliminated' : ''}`} key={player.id}><span><strong>{player.name}</strong><small>{player.eliminated ? 'Eliminated' : 'Still in'}</small></span><b>{player.score}</b></div>)}</div><p className="arena-tender-result">{game.message}</p><button className="button button-primary" onClick={() => setDismissedTenderVersion(game.version)}>Continue</button></Modal>}
   {help && <Modal title="At this table" close={() => setHelp(false)}><ul><li>{gameTypeLabel(game.rules.gameType, game.rules.targetScore)} · {game.rules.initialHand}-card deal</li><li>Pick Two: {game.rules.pickTwoEnabled ? game.rules.pickTwoMode : 'disabled'}</li><li>Pick Three: {game.rules.pickThreeEnabled ? game.rules.pickThreeMode : 'disabled'}</li><li>Suspension: {game.rules.suspensionEnabled ? 'on' : 'off'}</li><li>{game.rules.drawMode === 'one' ? 'Draw one and pass' : 'Draw until playable, then play'}</li><li>Last-card announcements are automatic.</li><li>{game.rules.gameType === 'tender' ? 'When the market is exhausted, the lowest hand total is eliminated and the next deal begins.' : 'With an empty market, a blocked round goes to the lowest hand score.'}</li></ul><p>The turn timer continues while this panel is open.</p></Modal>}
   </>}
   {leave && <Modal title="Leave this match?" close={() => setLeave(false)}><p>You can return later to resume, or forfeit your seat now.</p><div className="button-row"><button className="button button-secondary" onClick={() => router.push(game?.tournamentId ? `/tournaments/${game.tournamentId}` : '/play')}>Return later</button><button className="button button-primary" disabled={busy} onClick={async () => { if (!game || game.status === 'finished' || await mutate('forfeit', { version: game.version })) router.push(exit); }}>Forfeit & leave</button></div></Modal>}
