@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, Crown } from "lucide-react";
+import { ArrowLeft, Crown } from "@phosphor-icons/react/dist/ssr";
 import { useRouter } from "next/navigation";
 import { SavedRules } from "@/components/saved-rules";
 import { RoomSettingsPanel } from "@/components/room-settings";

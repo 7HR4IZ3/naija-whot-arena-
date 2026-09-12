@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { Share2 } from 'lucide-react';
+import { ShareNetwork as Share2 } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ScreenHeader } from '@/components/screen-header';

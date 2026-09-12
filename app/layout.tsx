@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 import "./refinement.css";
 import "./experience.css";
+import "./mobile-minimal.css";
 
 export const metadata: Metadata = {
   title: "Whot Arena · Nigerian Whot online",
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><AppShell>{children}</AppShell></body>
+      <body className="minimal-ui"><AppShell>{children}</AppShell></body>
     </html>
   );
 }

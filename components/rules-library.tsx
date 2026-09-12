@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ExternalLink, Info } from "lucide-react";
+import { ArrowSquareOut as ExternalLink, Info } from "@phosphor-icons/react/dist/ssr";
 import { CardFace } from "@/components/card-face";
 import { ScreenHeader } from "@/components/screen-header";
 import { ACTIONS, buildDeck, CARD_MANIFEST, SUIT_META, SUITS } from "@/lib/cards";

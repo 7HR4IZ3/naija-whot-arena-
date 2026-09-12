@@ -13,6 +13,7 @@ type CardFaceProps = {
   onPointerMove?: PointerEventHandler<HTMLButtonElement>;
   onPointerUp?: PointerEventHandler<HTMLButtonElement>;
   onPointerCancel?: PointerEventHandler<HTMLButtonElement>;
+  onLostPointerCapture?: PointerEventHandler<HTMLButtonElement>;
   className?: string;
 };
 
@@ -27,6 +28,7 @@ export function CardFace({
   onPointerMove,
   onPointerUp,
   onPointerCancel,
+  onLostPointerCapture,
   className = "",
 }: CardFaceProps) {
   const classes = [
@@ -51,7 +53,7 @@ export function CardFace({
 
   if (onClick) {
     return (
-      <button className={classes} data-card-id={card.id} draggable={false} onClick={onClick} onPointerCancel={onPointerCancel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} disabled={disabled} aria-label={label} type="button">
+      <button className={classes} data-card-id={card.id} draggable={false} onClick={onClick} onLostPointerCapture={onLostPointerCapture} onPointerCancel={onPointerCancel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} disabled={disabled} aria-pressed={selected} aria-label={label} type="button">
         <CardVisual card={card} />
       </button>
     );

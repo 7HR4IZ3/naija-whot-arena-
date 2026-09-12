@@ -40,9 +40,12 @@ export function useCardMotion(snapshot: MotionSnapshot | null, root: RefObject<H
   for (const animation of animations.current) animation.cancel();
   const move = async () => {
    setMoving(true);
+   // Suspended or interrupted animations must never hold the player's controls.
+   let expired = false;
+   const watchdog = setTimeout(() => { expired = true; for (const animation of animations.current) animation.cancel(); }, 4000);
    try {
     for (const flight of flights) {
-     if (run !== generation.current) break;
+     if (expired || run !== generation.current) break;
      const a = flight.from.getBoundingClientRect(); const b = flight.to.getBoundingClientRect();
      const width = innerWidth < 600 ? 58 : 70; const height = width * 1.5;
      const img = document.createElement('img');
@@ -54,7 +57,7 @@ export function useCardMotion(snapshot: MotionSnapshot | null, root: RefObject<H
      animations.current.add(animation);
      try { await animation.finished; } catch {} finally { animations.current.delete(animation); img.remove(); }
     }
-   } finally { if (run === generation.current) setMoving(false); }
+   } finally { clearTimeout(watchdog); if (run === generation.current) setMoving(false); }
   };
   void move();
  }, [serialized, root]);

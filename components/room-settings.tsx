@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings2 } from "lucide-react";
+
 import { emptyMarketDescription, gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
 
 type RoomSettingsProps = {
@@ -10,6 +10,7 @@ type RoomSettingsProps = {
   description?: string;
   idPrefix?: string;
   maxPlayers?: number;
+  untimed?: boolean;
 };
 
 const penaltyOptions: Array<{ value: RoomSettings["pickTwoMode"]; label: string }> = [
@@ -24,6 +25,7 @@ export function RoomSettingsPanel({
   title = "House rules",
   idPrefix = "room-settings",
   maxPlayers,
+  untimed = false,
 }: RoomSettingsProps) {
   const hasValidPlayerCount = typeof maxPlayers === "number" && Number.isInteger(maxPlayers) && maxPlayers >= 2 && maxPlayers <= 8;
   const handLimit = hasValidPlayerCount ? maxInitialHandForPlayers(maxPlayers, settings.whotEnabled) : MAX_INITIAL_HAND;
@@ -31,15 +33,15 @@ export function RoomSettingsPanel({
     ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.`
     : "";
   return (
-    <section className="settings-accordion">
-      <header>
-        <span className="settings-summary-title"><Settings2 size={16} /> {title}</span>
+    <details className="settings-accordion">
+      <summary className="house-rules-summary">
+        <span className="settings-summary-title">{title}</span>
         <span className="settings-summary-value">{gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand} cards</span>
-      </header>
+      </summary>
       <div className="settings-body">
         <details className="settings-section" open>
           <summary className="settings-section-heading">
-            <div><h3>Match format</h3><p>Choose the shape of the round and how quickly turns move.</p></div>
+            <h3>Match format</h3>
           </summary>
           <div className="settings-grid">
             <div className="form-field">
@@ -73,7 +75,7 @@ export function RoomSettingsPanel({
               </select>
               <span className="form-helper">{settings.gameType === "tender" && settings.emptyMarketMode === "score" ? "Count active hands and eliminate the lowest total." : emptyMarketDescription(settings.emptyMarketMode)}</span>
             </div>
-            <div className="form-field">
+            {!untimed && <div className="form-field">
               <label htmlFor={`${idPrefix}-timer`}>Turn timer</label>
               <select className="form-select" id={`${idPrefix}-timer`} onChange={(event) => onChange({ turnTimer: event.target.value as RoomSettings["turnTimer"] })} value={settings.turnTimer}>
                 <option value="off">No timer</option>
@@ -82,6 +84,7 @@ export function RoomSettingsPanel({
                 <option value="30">30 seconds</option>
               </select>
             </div>
+            }
             {settings.gameType === "knockout" && <div className="form-field">
               <label htmlFor={`${idPrefix}-target-score`}>Knockout target</label>
               <select className="form-select" id={`${idPrefix}-target-score`} onChange={(event) => onChange({ targetScore: Number(event.target.value) as RoomSettings["targetScore"] })} value={settings.targetScore}>
@@ -102,7 +105,7 @@ export function RoomSettingsPanel({
 
         <details className="settings-section">
           <summary className="settings-section-heading">
-            <div><h3>Core switches</h3><p>Decide which calls and scoring conventions this room uses.</p></div>
+            <div><h3>Calls & scoring</h3><p>Decide which calls and scoring conventions this room uses.</p></div>
           </summary>
           <div className="form-checkboxes">
             <label className="check-chip check-chip-toggle"><input checked={settings.endCalls} onChange={(event) => onChange({ endCalls: event.target.checked })} type="checkbox" /> Semi-last / last calls</label>
@@ -151,7 +154,7 @@ export function RoomSettingsPanel({
 
         <div className="settings-footnote"><strong>Current preset:</strong> {gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.emptyMarketMode === "recycle" ? "recycle pot" : settings.gameType === "tender" ? "lowest total eliminated" : "highest hand loses"} · {settings.pickTwoEnabled ? penaltyModeLabel(settings.pickTwoMode) : "2 disabled"} · {settings.pickThreeEnabled ? penaltyModeLabel(settings.pickThreeMode) : "5 disabled"}.</div>
       </div>
-    </section>
+    </details>
   );
 }
 

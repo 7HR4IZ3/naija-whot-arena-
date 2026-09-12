@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { History, Trophy, Gamepad2, UserRound } from "lucide-react";
+import { ClockCounterClockwise as History, Trophy, GameController as Gamepad2, UserCircle as UserRound } from "@phosphor-icons/react/dist/ssr";
 import { AccountLink } from "@/components/account-link";
 
 const navigation = [{ href: "/", label: "Play", icon: Gamepad2 }, { href: "/history", label: "History", icon: History }, { href: "/tournaments", label: "Tournaments", icon: Trophy }, { href: "/account", label: "Profile", icon: UserRound }];
@@ -17,6 +17,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AccountLink />
     </header>
     <div className="main-column" id="main-content">{children}</div>
-    <nav className="mobile-nav" aria-label="Mobile navigation">{navigation.map(({ href, label, icon: Icon }) => <Link href={href} key={href} aria-current={active(href) ? "page" : undefined}><Icon size={20} strokeWidth={1.7} /><span>{label}</span></Link>)}</nav>
+    <nav className="mobile-nav" aria-label="Mobile navigation">{navigation.map(({ href, label, icon: Icon }) => <Link href={href} key={href} aria-current={active(href) ? "page" : undefined}><Icon size={20} weight="bold" /><span>{label}</span></Link>)}</nav>
   </div>;
 }

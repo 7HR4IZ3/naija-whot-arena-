@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ResponsivePreview } from "@/components/responsive-preview";
 
 export const metadata: Metadata = {
   title: "Whot Arena · Design mockup",
@@ -7,12 +8,6 @@ export const metadata: Metadata = {
 
 export default function MockupPage() {
   return (
-    <main className="mockup-route">
-      <iframe
-        className="mockup-iframe"
-        src="/mockup.html"
-        title="Whot Arena design mockup"
-      />
-    </main>
+    <ResponsivePreview />
   );
 }

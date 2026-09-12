@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Clipboard, LockKeyhole, Users } from "lucide-react";
+import { ArrowLeft, Clipboard, LockKey as LockKeyhole, Users } from "@phosphor-icons/react/dist/ssr";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SavedRules } from "@/components/saved-rules";
 import { InviteJoin } from "@/components/invite-join";
