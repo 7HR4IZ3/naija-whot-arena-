@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, Crown } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { SavedRules } from "@/components/saved-rules";
 import { RoomSettingsPanel } from "@/components/room-settings";
 import { ScreenHeader } from "@/components/screen-header";
 import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from "@/lib/rules";
@@ -83,7 +84,7 @@ export function TournamentCreate() {
               <span className="form-helper">4–128 players can register before the bracket starts.</span>
             </div>
           </div>
-          <RoomSettingsPanel description="Publish a clear ruleset with the registration page so every player joins with the same expectations." idPrefix="tournament" onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))} settings={settings} title="Published rules" />
+          <SavedRules settings={settings} players={2} onLoad={setSettings}/><RoomSettingsPanel description="Publish a clear ruleset with the registration page so every player joins with the same expectations." idPrefix="tournament" onChange={(patch) => setSettings((current) => ({ ...current, ...patch }))} settings={settings} title="Published rules" />
           <div className="form-actions">
             <button className="button button-primary" disabled={busy} type="submit"><Crown size={16} /> {busy ? "Publishing…" : "Publish tournament"}</button>
           </div>

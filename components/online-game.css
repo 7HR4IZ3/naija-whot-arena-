@@ -33,3 +33,16 @@
 .online-game .arena-whot-want-label{font-size:12px}
 .online-game .arena-whot-want-label:before{content:"Wants ";font-weight:400}
 @media(max-width:600px){.online-game .arena-controls{position:sticky;bottom:env(safe-area-inset-bottom);z-index:5;background:#f7f5ee;padding:10px 0}.online-game .arena-controls button{font-size:14px;min-height:48px}.online-game .arena-felt{min-height:230px;margin-bottom:14px}.online-game .arena-opponents{min-height:85px}}
+
+/* Pointer dragging works with a mouse, trackpad, stylus, and touch. */
+.arena-cards .can-play:not(:disabled){touch-action:pan-x;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:grab}
+.arena-cards .card-art-image{pointer-events:none}
+.arena-cards .is-dragging{opacity:.3!important;transform:scale(.96)!important}
+.arena-drop-target{position:relative;border-radius:14px;transition:transform .16s,box-shadow .16s}
+.arena-drop-target.is-drop-target{transform:scale(1.04);z-index:2}
+.arena-drop-target.is-drop-target .whot-card{box-shadow:0 0 0 3px #b09043,0 10px 24px #203d3344}
+.arena-drop-target.is-drop-target::after{content:"Drop to play";position:absolute;left:50%;top:-27px;transform:translateX(-50%);color:#526657;font-size:11px;font-weight:700;white-space:nowrap;pointer-events:none}
+.arena-drag-ghost{position:fixed;z-index:1100;pointer-events:none;transform:translate(-50%,-50%) rotate(3deg);filter:drop-shadow(0 12px 16px #203d3344)}
+.arena-drag-ghost .whot-card{width:78px;height:117px;margin:0}
+@media(max-width:600px){.arena-drag-ghost .whot-card{width:66px;height:99px}.arena-drop-target.is-drop-target::after{top:-23px;font-size:10px}}
+@media(prefers-reduced-motion:reduce){.arena-drop-target{transition:none}.arena-drag-ghost{transform:translate(-50%,-50%)}}

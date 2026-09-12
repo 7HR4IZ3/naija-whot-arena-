@@ -1,4 +1,4 @@
-import { GameTable } from "@/components/game-table";
+import { PracticeGame } from "@/components/practice-game";
 import { OnlineGame } from "@/components/online-game";
 import { redirect } from "next/navigation";
 
@@ -10,5 +10,5 @@ export default async function GamePage({ searchParams }: GamePageProps) {
   const params = await searchParams;
   if (params.match) return <OnlineGame id={params.match} roomCode={params.room} />;
   if (params.room) redirect(`/table/${encodeURIComponent(params.room)}`);
-  return <GameTable roomCode={params.room ?? null} />;
+  return <PracticeGame />;
 }

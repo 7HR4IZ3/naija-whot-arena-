@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useCardMotion } from "@/lib/use-card-motion";
+import { useCardDrag } from "@/lib/use-card-drag";
 import "./online-game.css";
 import { GameModal } from "@/components/game-modal";
 import { CardFace } from "@/components/card-face";
@@ -323,12 +324,8 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
     return () => window.clearTimeout(timer);
   }, [game, settings, moving]);
 
-  if (!game) {
-    return <main className="game-page"><div className="auth-wrap"><div className="auth-card"><h1>Dealing…</h1><p>Shuffling the 54-card deck.</p></div></div></main>;
-  }
-
   const playCard = (index: number) => {
-    if (game.winner || moving) return;
+    if (!game || game.winner || moving) return;
     if (game.turn !== "player") {
       setGame((current) => current ? { ...current, message: "Hold up — Amaka is playing." } : current);
       return;
@@ -407,6 +404,17 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
       };
     });
   };
+  const drag = useCardDrag({
+    disabled: !game || Boolean(moving) || game.turn !== "player" || Boolean(game.awaitingSuit || game.winner),
+    onDrop: (cardId) => {
+      const index = game?.hand.findIndex((card) => card.id === cardId) ?? -1;
+      if (index >= 0) playCard(index);
+    },
+  });
+
+  if (!game) {
+    return <main className="game-page"><div className="auth-wrap"><div className="auth-card"><h1>Dealing…</h1><p>Shuffling the 54-card deck.</p></div></div></main>;
+  }
 
   const chooseSuit = (suit: PlayingSuit) => {
     if (!game.awaitingSuit) return;
@@ -455,16 +463,17 @@ export function GameTable({ roomCode = null }: { roomCode?: string | null }) {
     <section className="arena-opponents" aria-label="Opponent hand"><div className={`arena-opponent ${game.turn === "opponent" ? "has-turn" : ""}`} data-player="opponent"><p><strong>Amaka</strong><small>{game.opponentHand.length} cards</small></p><div className="arena-backs">{Array.from({length:Math.min(game.opponentHand.length,9)},(_,i)=><Image src="/cards/classic/back.svg" alt="Face down card" width={40} height={60} key={i} unoptimized style={{transform:`rotate(${(i-Math.min(game.opponentHand.length-1,8)/2)*5}deg)`}} />)}</div>{game.opponentHand.length>9 && <small>+{game.opponentHand.length-9}</small>}</div></section>
     <section className="arena-felt" aria-label="Practice Whot table">
       <div className="arena-turn">{game.winner ? "Round complete" : moving ? "Cards moving…" : game.turn === "player" ? "Your turn" : "Amaka’s turn"}</div>
-      <div className="arena-piles"><div className={marketOnlyOption ? "arena-market-pile is-required" : "arena-market-pile"} data-market><button type="button" className="arena-market-button" aria-label={game.market.length ? "Draw from market" : "Resolve the empty market"} disabled={locked} onClick={draw}><CardFace card={topCard(game)} hidden size="lg"/></button><small>Market · {game.market.length}</small></div><div data-discard><CardFace card={topCard(game)} size="lg"/><small>Playing stack</small></div></div>
+      <div className="arena-piles"><div className={marketOnlyOption ? "arena-market-pile is-required" : "arena-market-pile"} data-market><button type="button" className="arena-market-button" aria-label={game.market.length ? "Draw from market" : "Resolve the empty market"} disabled={locked} onClick={draw}><CardFace card={topCard(game)} hidden size="lg"/></button><small>Market · {game.market.length}</small></div><div className={`arena-drop-target ${drag.overTarget ? "is-drop-target" : ""}`} data-discard data-drop-target><CardFace card={topCard(game)} size="lg"/><small>Playing stack</small></div></div>
       {wantedSuit && <div className="arena-whot-want" role="status" aria-label={`Whot wants ${SUIT_META[wantedSuit].short}. Play that symbol or another Whot.`} style={{ borderColor: SUIT_META[wantedSuit].color }}><span aria-hidden="true" className="arena-whot-want-symbol" style={{ color: SUIT_META[wantedSuit].color }}>{SUIT_SYMBOLS[wantedSuit]}</span><span className="arena-whot-want-label">{SUIT_META[wantedSuit].short}</span></div>}
       {game.pendingPenalty>0 && <p className="arena-penalty">Pick {game.pendingPenalty} cards</p>}
       <p className="arena-message" aria-live="polite">{game.message}</p>
     </section>
     <section className={`arena-your-hand ${myTurn ? "is-your-turn" : ""}`} data-player="player"><div className="arena-hand-heading"><strong>Your hand <span>{game.hand.length}</span></strong><span className={`arena-turn-badge ${myTurn ? "is-active" : ""}`}>{myTurn ? "Your turn" : "Waiting"}</span><small>Round {round} · {gameTypeLabel(settings.gameType, settings.targetScore)}</small></div>
-      <div className="arena-cards">{game.hand.map((card,i)=><CardFace card={card} key={card.id} selected={selected===i} disabled={locked || !canPlay(game,card,settings)} className={canPlay(game,card,settings) ? "can-play" : "cannot-play"} onClick={()=>setSelected(selected===i ? null : i)} />)}</div>
+      <div className="arena-cards">{game.hand.map((card,i)=><CardFace card={card} key={card.id} selected={selected===i} disabled={locked || !canPlay(game,card,settings)} className={`${canPlay(game,card,settings) ? "can-play" : "cannot-play"} ${drag.draggingId === card.id ? "is-dragging" : ""}`} onClick={()=>{if(drag.consumeClick()) return; setSelected(selected===i ? null : i);}} {...drag.getCardHandlers(card.id)} />)}</div>
       <div className="arena-controls"><button className="button button-secondary" disabled={locked} onClick={draw}>{game.pendingPenalty ? `Pick ${game.pendingPenalty} cards` : "Go to market"}</button><button className="button button-primary" disabled={locked || selected===null} onClick={()=>{if(selected!==null)playCard(selected);}}>{selected !== null ? `Play ${game.hand[selected]?.value ?? "card"}` : "Select a card"}</button></div>
-      <p className="arena-hint">Tap a highlighted card, then play it. Swipe your hand to see more cards.</p>
+      <p className="arena-hint">Drag a playable card to the playing stack, or tap to select it.</p>
     </section>
+    {drag.draggingId && drag.dragPosition && game.hand.find(card => card.id === drag.draggingId) && <div className="arena-drag-ghost" style={{ left: drag.dragPosition.x, top: drag.dragPosition.y }} aria-hidden="true"><CardFace card={game.hand.find(card => card.id === drag.draggingId)!} size="md" /></div>}
     {game.awaitingSuit && !moving && <GameModal title="Call a symbol"><div className="arena-shape-picker">{SUITS.map((suit,i)=><button className="button button-secondary" key={suit} onClick={()=>chooseSuit(suit)}><span>{["●","▲","✚","■","★"][i]}</span>{SUIT_META[suit].short}</button>)}</div></GameModal>}
     {game.winner && !moving && <GameModal title={game.winner==="You" ? "You won!" : "Amaka won this round."}><div className={`arena-result ${game.winner==="You" ? "is-winner" : ""}`}>{game.winner==="You" ? "★" : "w."}</div>{resultTally && <><p className="arena-tender-intro">{game.marketTally ? "The market finished. The highest hand total loses." : "The market finished. The lowest hand total is eliminated."}</p><div className="arena-tender-tally">{resultTally.map(player => <div className={`arena-tender-row ${player.eliminated ? "is-eliminated" : ""}`} key={player.name}><span><strong>{player.name}</strong><small>{player.eliminated ? (game.marketTally ? "Highest total · loses" : "Eliminated") : "Still in"}</small></span><b>{player.score}</b></div>)}</div></>}<p>{game.message}</p><p>Ready for another?</p><button className="button button-primary" onClick={reset}>Play again</button><Link className="text-link" href="/play">Back to play</Link></GameModal>}
     <footer className="arena-hint"><Link className="text-link" href="/rules">Table rules</Link> · Local practice against the computer</footer>

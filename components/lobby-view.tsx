@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Clipboard, LockKeyhole, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { SavedRules } from "@/components/saved-rules";
 import { InviteJoin } from "@/components/invite-join";
 import { RoomSettingsPanel } from "@/components/room-settings";
 import { ScreenHeader } from "@/components/screen-header";
@@ -108,6 +109,7 @@ export function LobbyView() {
               <p className="form-helper">{gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.drawMode === "one" ? "draw one" : "draw until playable"}</p>
             </div>
           </div>
+          <SavedRules settings={settings} players={Number(maxPlayers)} onLoad={setSettings}/>
           <RoomSettingsPanel idPrefix="room" maxPlayers={Number(maxPlayers)} onChange={(patch) => { setError(""); setSettings((current) => ({ ...current, ...patch })); }} settings={settings} />
           {configurationError && <p className="form-error" role="alert">{configurationError}</p>}
           <div className="form-actions">
