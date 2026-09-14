@@ -1,7 +1,7 @@
 "use client";
 
 
-import { emptyMarketDescription, gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
+import { emptyMarketDescription, gameTypeDescription, gameTypeLabel, maxInitialHandForPlayers, maxPlayersForInitialHand, MIN_INITIAL_HAND, MAX_INITIAL_HAND, penaltyModeLabel, type RoomSettings } from "@/lib/rules";
 
 type RoomSettingsProps = {
   settings: RoomSettings;
@@ -29,6 +29,7 @@ export function RoomSettingsPanel({
 }: RoomSettingsProps) {
   const hasValidPlayerCount = typeof maxPlayers === "number" && Number.isInteger(maxPlayers) && maxPlayers >= 2 && maxPlayers <= 8;
   const handLimit = hasValidPlayerCount ? maxInitialHandForPlayers(maxPlayers, settings.whotEnabled) : MAX_INITIAL_HAND;
+  const playerLimit = maxPlayersForInitialHand(settings.initialHand, settings.whotEnabled);
   const handError = hasValidPlayerCount && (settings.initialHand < MIN_INITIAL_HAND || settings.initialHand > handLimit)
     ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.`
     : "";
@@ -36,7 +37,7 @@ export function RoomSettingsPanel({
     <details className="settings-accordion">
       <summary className="house-rules-summary">
         <span className="settings-summary-title">{title}</span>
-        <span className="settings-summary-value">{gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand} cards</span>
+        <span className="settings-summary-value">{gameTypeLabel(settings.gameType)} · {settings.initialHand} cards</span>
       </summary>
       <div className="settings-body">
         <details className="settings-section" open>
@@ -56,7 +57,7 @@ export function RoomSettingsPanel({
             <div className="form-field">
               <label htmlFor={`${idPrefix}-initial-hand`}>Starting cards</label>
               <input aria-describedby={`${idPrefix}-initial-hand-help`} aria-invalid={Boolean(handError)} className="form-input" id={`${idPrefix}-initial-hand`} inputMode="numeric" max={handLimit} min={MIN_INITIAL_HAND} onChange={(event) => onChange({ initialHand: event.target.value === "" ? 0 : Number(event.target.value) })} type="number" value={settings.initialHand || ""} />
-              <span className="form-helper" id={`${idPrefix}-initial-hand-help`}>{hasValidPlayerCount ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats.` : `Choose ${MIN_INITIAL_HAND}–${MAX_INITIAL_HAND} cards after selecting a valid table size.`}</span>
+              <span className="form-helper" id={`${idPrefix}-initial-hand-help`}>{hasValidPlayerCount ? `Choose ${MIN_INITIAL_HAND}–${handLimit} cards for ${maxPlayers} seats. One card stays in the opening market.` : `Choose ${MIN_INITIAL_HAND}–${MAX_INITIAL_HAND} cards after selecting a valid table size.`}</span>
               {handError && <span className="form-error" role="alert">{handError}</span>}
             </div>
           </div></details><details className="settings-section"><summary className="settings-section-heading"><h3>More rules</h3></summary><div className="settings-grid">
@@ -85,15 +86,6 @@ export function RoomSettingsPanel({
               </select>
             </div>
             }
-            {settings.gameType === "knockout" && <div className="form-field">
-              <label htmlFor={`${idPrefix}-target-score`}>Knockout target</label>
-              <select className="form-select" id={`${idPrefix}-target-score`} onChange={(event) => onChange({ targetScore: Number(event.target.value) as RoomSettings["targetScore"] })} value={settings.targetScore}>
-                <option value="50">Eliminate at 50</option>
-                <option value="100">Eliminate at 100</option>
-                <option value="200">Eliminate at 200</option>
-              </select>
-              <span className="form-helper">Used when knockout scoring is selected.</span>
-            </div>}
             <div className="form-field">
               <label>Direction</label>
               <div className="form-checkboxes">
@@ -152,7 +144,7 @@ export function RoomSettingsPanel({
           </div>
         </details>
 
-        <div className="settings-footnote"><strong>Current preset:</strong> {gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.emptyMarketMode === "recycle" ? "recycle pot" : settings.gameType === "tender" ? "lowest total eliminated" : "highest hand loses"} · {settings.pickTwoEnabled ? penaltyModeLabel(settings.pickTwoMode) : "2 disabled"} · {settings.pickThreeEnabled ? penaltyModeLabel(settings.pickThreeMode) : "5 disabled"}.</div>
+        <div className="settings-footnote"><strong>Current preset:</strong> {gameTypeLabel(settings.gameType)} · {settings.initialHand}-card deal · {settings.emptyMarketMode === "recycle" ? "recycle pot" : settings.gameType === "tender" ? "lowest total eliminated" : "highest hand loses"} · up to {playerLimit} seats at this deal · {settings.pickTwoEnabled ? penaltyModeLabel(settings.pickTwoMode) : "2 disabled"} · {settings.pickThreeEnabled ? penaltyModeLabel(settings.pickThreeMode) : "5 disabled"}.</div>
       </div>
     </details>
   );

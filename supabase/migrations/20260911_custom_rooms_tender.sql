@@ -84,24 +84,28 @@ begin
    return fresh||jsonb_build_object('players',(fresh->'players')||eliminated,'tenderTally',tally,'message',(select value->>'name' from jsonb_array_elements(s->'players') where value->>'id'=eliminated_id limit 1)||' was eliminated with '||eliminated_score||' points. Next tender round.','event',jsonb_build_object('type','tender-elimination','actor',eliminated_id));
   end if;
   select value->>'id' into winner from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false) limit 1;
- elsif s->'rules'->>'gameType'='knockout' then
+ elsif s->'rules'->>'gameType'='knockout' and s->'event'->>'type' is distinct from 'forfeit' then
+  select value->>'id',(value->>'roundScore')::int into eliminated_id,eliminated_score
+  from jsonb_array_elements(s->'players')
+  where not coalesce((value->>'eliminated')::boolean,false)
+  order by (value->>'roundScore')::int desc,value->>'id' limit 1;
+  select coalesce(jsonb_agg(jsonb_build_object('id',value->>'id','name',value->>'name','score',(value->>'roundScore')::int,'eliminated',value->>'id'=eliminated_id) order by (value->>'roundScore')::int desc,value->>'id'),'[]'::jsonb)
+  into tally from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false);
+  if eliminated_id is null then raise exception 'Knockout table has no active players'; end if;
   i:=0;
   for p in select value from jsonb_array_elements(s->'players') loop
-   if (p->>'total')::int>=(s->'rules'->>'targetScore')::int then s:=jsonb_set(s,array['players',i::text,'eliminated'],'true'); end if;
+   if p->>'id'=eliminated_id then s:=jsonb_set(s,array['players',i::text,'eliminated'],'true'); end if;
    i:=i+1;
   end loop;
-  select count(*) into alive from jsonb_array_elements(s->'players') where not (value->>'eliminated')::boolean;
+  select count(*) into alive from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false);
   if alive>1 then
-   select jsonb_agg(value-'hand'-'roundScore') into roster from jsonb_array_elements(s->'players') where not (value->>'eliminated')::boolean;
-   declare fresh_round jsonb; eliminated_round jsonb; begin
-    fresh_round:=arena_private.deal(roster,s->'rules',(s->>'round')::int+1);
-    select coalesce(jsonb_agg(value||'{"hand":[]}'::jsonb),'[]') into eliminated_round from jsonb_array_elements(s->'players') where (value->>'eliminated')::boolean;
-    return fresh_round||jsonb_build_object('players',(fresh_round->'players')||eliminated_round,'message','Round complete. Scores added; the next round is dealt.');
-   end;
+   return s||jsonb_build_object('status','round-complete','winner',winner,'deadline',null,'knockoutTally',tally,
+    'message',(select value->>'name' from jsonb_array_elements(s->'players') where value->>'id'=eliminated_id limit 1)||' was eliminated with '||eliminated_score||' points. Start the next round when ready.',
+    'event',jsonb_build_object('type','knockout-round-complete','actor',eliminated_id));
   end if;
-  select value->>'id' into winner from jsonb_array_elements(s->'players') order by (value->>'total')::int,value->>'id' limit 1;
+  select value->>'id' into winner from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false) limit 1;
  end if;
- if tally is not null then s:=s||jsonb_build_object('tenderTally',tally); end if;
+ if tally is not null then s:=s||jsonb_build_object(case when s->'rules'->>'gameType'='tender' then 'tenderTally' else 'knockoutTally' end,tally); end if;
  s:=s||jsonb_build_object('status','finished','winner',winner,'deadline',null);
  for p in select value from jsonb_array_elements(s->'players') loop
   insert into arena_private.results(game_id,user_id,score,won) values(gid,(p->>'id')::uuid,(p->>'total')::int,p->>'id'=winner) on conflict do nothing;

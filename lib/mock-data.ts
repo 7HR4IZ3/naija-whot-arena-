@@ -34,7 +34,7 @@ export const MOCK_TOURNAMENTS = [
     day: "12",
     month: "SEP",
     title: "Lagos After Dark",
-    description: "5-player elimination · 100-point knockout",
+    description: "5-player elimination · knockout rounds",
     time: "9:00 PM WAT",
     players: "18 / 32 joined",
     prize: "Bragging rights",

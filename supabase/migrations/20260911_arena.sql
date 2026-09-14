@@ -71,6 +71,9 @@ $$;
 create or replace function arena_private.deal(roster jsonb,rules jsonb,round_no int default 1) returns jsonb language plpgsql as $$
 declare deck jsonb:='[]'; ps jsonb:='[]'; p jsonb; c jsonb; suit text; nums int[]; n int; i int; h jsonb;
 begin
+ if jsonb_array_length(roster)*(rules->>'initialHand')::int+1>(case when (rules->>'whotEnabled')::boolean then 54 else 49 end) then
+  raise exception 'That hand size is too large for this many players';
+ end if;
  foreach suit in array array['circle','triangle','cross','square','star','whot'] loop
   nums:=case when suit in ('circle','triangle') then array[1,2,3,4,5,7,8,10,11,12,13,14]
    when suit in ('cross','square') then array[1,2,3,5,7,10,11,13,14] when suit='star' then array[1,2,3,4,5,7,8] else array[20,20,20,20,20] end;

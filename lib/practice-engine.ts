@@ -42,7 +42,11 @@ function finishRound(s:PracticeState,winner:string|null,reason:string){
   eliminated=[...scores].sort((a,b)=>a.score-b.score || Number(a.id)-Number(b.id))[0].id;
   reason="Market empty: lowest total eliminated. Ties use seat order.";
  } else if(winner===null){winner=[...scores].sort((a,b)=>a.score-b.score || Number(a.id)-Number(b.id))[0].id;reason="Market empty: lowest total wins; highest total loses. Ties use seat order.";}
- for(const p of active){p.total+=scores.find(v=>v.id===p.id)!.score;if(p.id===eliminated || (s.rules.gameType==="knockout" && p.total>=s.rules.targetScore))p.eliminated=true;}
+ if(s.rules.gameType==="knockout"){
+  eliminated=[...scores].sort((a,b)=>b.score-a.score || Number(a.id)-Number(b.id))[0].id;
+  reason=winner===null ? "Market empty: the highest hand total is eliminated. Ties use seat order." : reason+" The highest hand total is eliminated.";
+ }
+ for(const p of active){p.total+=scores.find(v=>v.id===p.id)!.score;if(p.id===eliminated)p.eliminated=true;}
  s.rounds.push({round:s.round,mode:s.rules.gameType,winner,reason,players:scores});
  const remaining=s.players.filter(p=>!p.eliminated);
  if((s.rules.gameType==="tender" && eliminated!==null || s.rules.gameType==="knockout") && remaining.length>1){
@@ -51,7 +55,7 @@ function finishRound(s:PracticeState,winner:string|null,reason:string){
   s.players.filter(p=>p.eliminated).forEach(p=>{p.hand=[];});
   s.deck=fresh.deck;s.discard=fresh.discard;s.calledSuit=null;s.penalty=0;s.penaltyType=null;s.turn=s.players.findIndex(p=>!p.eliminated);s.passes=0;s.round++;s.message=reason+" Next round dealt.";
  } else {
-  s.winner=s.rules.gameType==="knockout" ? [...s.players].sort((a,b)=>a.total-b.total)[0].id : eliminated!==null ? remaining[0].id : winner;
+  s.winner=s.rules.gameType==="knockout" || eliminated!==null ? remaining[0].id : winner;
   s.message=reason+" "+s.players.find(p=>p.id===s.winner)!.name+" won.";
  }
 }

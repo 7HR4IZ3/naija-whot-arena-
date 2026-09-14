@@ -8,16 +8,26 @@ create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb 
 create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;`);
 await db.exec(readFileSync('supabase/setup.sql','utf8').replace('create extension if not exists pgcrypto;',''));
 await db.exec(readFileSync('supabase/migrations/20260912_match_experience.sql','utf8'));
-const users=Array.from({length:5},(_,i)=>`00000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`);
+const users=Array.from({length:8},(_,i)=>`00000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`);
 for(const u of users) await db.query(`insert into auth.users(id,email) values($1,$2)`,[u,`${u}@test.invalid`]);
 async function rpc(u,action,input={}) {
  await db.query(`select set_config('request.jwt.claim.sub',$1,false)`,[u]);
  return (await db.query(`select public.arena($1,$2) result`,[action,JSON.stringify({requestId:crypto.randomUUID(),...input})])).rows[0].result;
 }
+assert.deepEqual(await rpc(users[0],'health'),{schemaVersion:4});
 const room=await rpc(users[0],'createRoom',{name:'Test',maxPlayers:2,rules:{turnTimer:'off'}});
 const largeRoom=await rpc(users[0],'createRoom',{name:'Eight seat test',maxPlayers:8,rules:{turnTimer:'off',initialHand:6}});
 assert.equal(largeRoom.code.length,6);
 await assert.rejects(()=>rpc(users[0],'createRoom',{name:'Too many cards',maxPlayers:8,rules:{turnTimer:'off',initialHand:7}}),/hand size/);
+for (const size of [6,7,8]) {
+ const room=await rpc(users[0],'createRoom',{name:`${size}-seat start`,maxPlayers:size,rules:{turnTimer:'off',initialHand:6}});
+ for(const u of users.slice(1,size)){await rpc(u,'joinRoom',{code:room.code});await rpc(u,'ready',{code:room.code,ready:true});}
+ const started=await rpc(users[0],'startRoom',{code:room.code});
+ const view=await rpc(users[0],'game',{game:started.game});
+ assert.equal(view.players.length,size);
+ assert.equal(view.hand.length,6);
+ assert.equal(view.marketCount,54-(size*6)-1);
+}
 await rpc(users[1],'joinRoom',{code:room.code});
 await assert.rejects(()=>rpc(users[2],'joinRoom',{code:room.code}),/full/);
 await assert.rejects(()=>rpc(users[1],'startRoom',{code:room.code}),/host/);
@@ -57,7 +67,7 @@ const rematchRoom=await rpc(users[0],'room',{code:room.code});
 assert.equal(rematchRoom.players.length,2);
 await assert.rejects(()=>rpc(users[0],'startRoom',{code:room.code}),/ready/);
 const tournament=await rpc(users[0],'createTournament',{name:'Bracket test',startsAt:'2099-01-01T12:00:00Z',maxPlayers:8,rules:{turnTimer:'off'}});
-for(const u of users.slice(1)) await rpc(u,'joinTournament',{tournament:tournament.id});
+ for(const u of users.slice(1,5)) await rpc(u,'joinTournament',{tournament:tournament.id});
 let bracket=await rpc(users[0],'startTournament',{tournament:tournament.id});
 assert.equal(bracket.matches.length,3);
 while(bracket.status==='running') {
@@ -84,7 +94,12 @@ for(let sim=0;sim<12;sim++) {
  for(const u of users.slice(1,size)){await rpc(u,'joinRoom',{code:room.code});await rpc(u,'ready',{code:room.code,ready:true});}
  const roomView=await rpc(users[0],'startRoom',{code:room.code});
  let view=await rpc(users[0],'game',{game:roomView.game});
- for(let step=0;step<1500 && view.status==='running';step++) {
+ for(let step=0;step<5000 && view.status!=='finished';step++) {
+  if(view.status==='round-complete') {
+   const starter=view.players.find(p=>!p.eliminated);
+   view=await rpc(starter.id,'nextRound',{game:view.id,version:view.version});
+   continue;
+  }
   const state=(await db.query('select state from arena_private.games where id=$1',[view.id])).rows[0].state;
   const cards=[...state.deck,...state.discard,...state.players.flatMap(p=>p.hand)];
   assert.equal(new Set(cards.map(c=>c.id)).size,cards.length,'duplicate card');
@@ -132,6 +147,27 @@ assert.equal(tenderView.roundResults[0].players.find(p=>p.id===users[0]).score,3
 assert.equal(tenderView.roundResults[0].players.find(p=>p.id===users[0]).cards[0].id,'low-one');
 assert.equal(tenderView.players.filter(p=>!p.eliminated).length,2);
 assert.equal(tenderView.players.find(p=>p.id===users[0]).eliminated,true);
+// Knockout ends each normal round in a shared result state. The highest hand
+// total is eliminated, and an active player explicitly starts the next deal.
+const knockoutRoom=await rpc(users[0],'createRoom',{name:'Knockout round test',maxPlayers:3,rules:{turnTimer:'off',gameType:'knockout',initialHand:3}});
+for(const u of users.slice(1,3)){await rpc(u,'joinRoom',{code:knockoutRoom.code});await rpc(u,'ready',{code:knockoutRoom.code,ready:true});}
+const knockoutStart=await rpc(users[0],'startRoom',{code:knockoutRoom.code});
+let knockoutFixture=(await db.query('select state from arena_private.games where id=$1',[knockoutStart.game])).rows[0].state;
+knockoutFixture.players[0].hand=[{id:'knockout-win',suit:'circle',value:4,score:4}];
+knockoutFixture.players[1].hand=[{id:'knockout-high',suit:'star',value:7,score:14},{id:'knockout-high-two',suit:'circle',value:8,score:8}];
+knockoutFixture.players[2].hand=[{id:'knockout-mid',suit:'circle',value:5,score:5}];
+knockoutFixture.deck=[]; knockoutFixture.discard=[{id:'knockout-opening',suit:'circle',value:4,score:4}]; knockoutFixture.turn=0; knockoutFixture.passes=0; knockoutFixture.deadline=null;
+await db.query('update arena_private.games set state=$1 where id=$2',[JSON.stringify(knockoutFixture),knockoutStart.game]);
+let knockoutView=await rpc(users[0],'play',{game:knockoutStart.game,version:1,card:'knockout-win'});
+assert.equal(knockoutView.status,'round-complete');
+assert.equal(knockoutView.players.find(p=>p.id===users[1]).eliminated,true);
+assert.equal(knockoutView.knockoutTally.find(p=>p.id===users[1]).score,22);
+assert.equal(knockoutView.roundResults.length,1);
+knockoutView=await rpc(users[0],'nextRound',{game:knockoutView.id,version:knockoutView.version});
+assert.equal(knockoutView.status,'running');
+assert.equal(knockoutView.round,2);
+assert.equal(knockoutView.players.filter(p=>!p.eliminated).length,2);
+assert.equal(knockoutView.players.find(p=>p.id===users[1]).count,0);
 // The default empty-market rule counts points: the lowest hand wins and the highest hand loses.
 const scoreRoom=await rpc(users[0],'createRoom',{name:'Empty market score test',maxPlayers:2,rules:{turnTimer:'off'} });
 await rpc(users[1],'joinRoom',{code:scoreRoom.code}); await rpc(users[1],'ready',{code:scoreRoom.code,ready:true});

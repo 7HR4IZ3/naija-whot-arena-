@@ -8,6 +8,7 @@ export const MIN_ROOM_PLAYERS = 2;
 export const MAX_ROOM_PLAYERS = 8;
 export const MIN_INITIAL_HAND = 3;
 export const MAX_INITIAL_HAND = 12;
+export const MARKET_RESERVE_CARDS = 1;
 
 export type RoomSettings = {
   gameType: GameType;
@@ -142,14 +143,14 @@ export function penaltyMode(value: 2 | 5, settings: RoomSettings): PenaltyMode {
   return value === 2 ? settings.pickTwoMode : settings.pickThreeMode;
 }
 
-export function gameTypeLabel(gameType: GameType, targetScore = 100) {
+export function gameTypeLabel(gameType: GameType) {
   if (gameType === "tender") return "Tender elimination";
-  return gameType === "knockout" ? `${targetScore}-point knockout` : "Classic round";
+  return gameType === "knockout" ? "Knockout elimination" : "Classic round";
 }
 
 export function gameTypeDescription(gameType: GameType) {
   if (gameType === "tender") return "When the market is exhausted, the lowest hand total is eliminated and the next deal begins.";
-  if (gameType === "knockout") return "Card totals accumulate; players reach the target score and leave the table.";
+  if (gameType === "knockout") return "Play a normal round, then eliminate the player with the highest hand total before the next deal.";
   return "The first player to clear their hand wins the round.";
 }
 
@@ -165,7 +166,12 @@ export function deckSize(settings: Pick<RoomSettings, "whotEnabled">) {
 
 export function maxInitialHandForPlayers(players: number, whotEnabled: boolean) {
   if (!Number.isInteger(players) || players < MIN_ROOM_PLAYERS) return MAX_INITIAL_HAND;
-  return Math.min(MAX_INITIAL_HAND, Math.floor((deckSize({ whotEnabled }) - 1) / players));
+  return Math.min(MAX_INITIAL_HAND, Math.floor((deckSize({ whotEnabled }) - MARKET_RESERVE_CARDS) / players));
+}
+
+export function maxPlayersForInitialHand(initialHand: number, whotEnabled: boolean) {
+  if (!Number.isInteger(initialHand) || initialHand < MIN_INITIAL_HAND) return MAX_ROOM_PLAYERS;
+  return Math.min(MAX_ROOM_PLAYERS, Math.floor((deckSize({ whotEnabled }) - MARKET_RESERVE_CARDS) / initialHand));
 }
 
 export function validateRoomConfiguration(maxPlayers: number, settings: RoomSettings) {
@@ -177,7 +183,7 @@ export function validateRoomConfiguration(maxPlayers: number, settings: RoomSett
   }
   const maximum = maxInitialHandForPlayers(maxPlayers, settings.whotEnabled);
   if (settings.initialHand > maximum) {
-    return `${maxPlayers} players can start with at most ${maximum} cards using this deck.`;
+    return `${maxPlayers} players can start with at most ${maximum} cards; one card must remain for the opening market.`;
   }
   return null;
 }

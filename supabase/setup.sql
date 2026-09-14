@@ -316,6 +316,9 @@ $$;
 create or replace function arena_private.deal(roster jsonb,rules jsonb,round_no int default 1) returns jsonb language plpgsql as $$
 declare deck jsonb:='[]'; ps jsonb:='[]'; p jsonb; c jsonb; suit text; nums int[]; n int; i int; h jsonb;
 begin
+ if jsonb_array_length(roster)*(rules->>'initialHand')::int+1>(case when (rules->>'whotEnabled')::boolean then 54 else 49 end) then
+  raise exception 'That hand size is too large for this many players';
+ end if;
  foreach suit in array array['circle','triangle','cross','square','star','whot'] loop
   nums:=case when suit in ('circle','triangle') then array[1,2,3,4,5,7,8,10,11,12,13,14]
    when suit in ('cross','square') then array[1,2,3,5,7,10,11,13,14] when suit='star' then array[1,2,3,4,5,7,8] else array[20,20,20,20,20] end;
@@ -1052,11 +1055,39 @@ begin
 end $$;
 drop trigger if exists arena_record_move on arena_private.games;
 create trigger arena_record_move after update on arena_private.games for each row execute function arena_private.record_move();
+
+create or replace function arena_private.start_knockout_round(gid uuid,uid uuid,expected_version int) returns void language plpgsql as $$
+declare g arena_private.games; s jsonb; roster jsonb; fresh jsonb; eliminated jsonb;
+begin
+ select * into g from arena_private.games where id=gid for update;
+ if not found then raise exception 'Game not found'; end if;
+ s:=g.state;
+ if s->>'status'<>'round-complete' then raise exception 'This round is not waiting to be started'; end if;
+ if expected_version is null or expected_version<>g.version then raise exception 'Table changed. Refresh before starting the next round.'; end if;
+ if not exists(select 1 from jsonb_array_elements(s->'players') where value->>'id'=uid::text and not coalesce((value->>'eliminated')::boolean,false)) then raise exception 'Only an active player can start the next round'; end if;
+ select coalesce(jsonb_agg(value-'hand'-'roundScore' order by ordinality),'[]'::jsonb)
+ into roster
+ from jsonb_array_elements(s->'players') with ordinality as player(value,ordinality)
+ where not coalesce((value->>'eliminated')::boolean,false);
+ fresh:=arena_private.deal(roster,s->'rules',(s->>'round')::int+1);
+ select coalesce(jsonb_agg((value-'hand')||jsonb_build_object('hand','[]'::jsonb) order by ordinality),'[]'::jsonb)
+ into eliminated
+ from jsonb_array_elements(s->'players') with ordinality as player(value,ordinality)
+ where coalesce((value->>'eliminated')::boolean,false);
+ fresh:=fresh||jsonb_build_object(
+  'players',(fresh->'players')||eliminated,
+  'message','Round '||(s->>'round')||' complete. The next knockout round is ready.',
+  'event',jsonb_build_object('type','knockout-round-start','actor',uid::text)
+ );
+ update arena_private.games set state=fresh,version=version+1,updated_at=now() where id=gid;
+ perform arena_private.ping(g.room_id,g.tournament_id);
+end $$;
+
 create or replace function arena_private.finish(gid uuid,s jsonb) returns jsonb language plpgsql as $$
 declare p jsonb; i int:=0; score int; alive int; winner text:=s->>'winner'; roster jsonb; t uuid; eliminated_id text; eliminated_score int; fresh jsonb; eliminated jsonb; tally jsonb;
 begin
  insert into arena_private.round_results(game_id,round_no,summary)
- values(gid,(s->>'round')::int,jsonb_build_object('round',(s->>'round')::int,'mode',s->'rules'->>'gameType','winner',s->>'winner','reason',case when s->>'winner' is not null then coalesce(s->>'message','Round complete') when s->'rules'->>'gameType'='tender' then 'Market exhausted: lowest total eliminated. Equal totals use player ID as a stable tie-break.' else 'Market exhausted: highest total loses.' end,'players',(select jsonb_agg(jsonb_build_object('id',rp->>'id','name',rp->>'name','cards',rp->'hand','score',(select coalesce(sum((rc->>'score')::int),0) from jsonb_array_elements(rp->'hand') rc))) from jsonb_array_elements(s->'players') rp where not coalesce((rp->>'eliminated')::boolean,false))))
+ values(gid,(s->>'round')::int,jsonb_build_object('round',(s->>'round')::int,'mode',s->'rules'->>'gameType','winner',s->>'winner','reason',case when s->'rules'->>'gameType'='knockout' then 'Normal round complete: the highest hand total was eliminated. Equal totals use player ID as a stable tie-break.' when s->>'winner' is not null then coalesce(s->>'message','Round complete') when s->'rules'->>'gameType'='tender' then 'Market exhausted: lowest total eliminated. Equal totals use player ID as a stable tie-break.' else 'Market exhausted: highest total loses.' end,'players',(select jsonb_agg(jsonb_build_object('id',rp->>'id','name',rp->>'name','cards',rp->'hand','score',(select coalesce(sum((rc->>'score')::int),0) from jsonb_array_elements(rp->'hand') rc))) from jsonb_array_elements(s->'players') rp where not coalesce((rp->>'eliminated')::boolean,false))))
  on conflict(game_id,round_no) do nothing;
  for p in select value from jsonb_array_elements(s->'players') loop
   select coalesce(sum((value->>'score')::int),0) into score from jsonb_array_elements(p->'hand');
@@ -1085,24 +1116,28 @@ begin
    return fresh||jsonb_build_object('players',(fresh->'players')||eliminated,'tenderTally',tally,'message',(select value->>'name' from jsonb_array_elements(s->'players') where value->>'id'=eliminated_id limit 1)||' was eliminated with '||eliminated_score||' points. Next tender round.','event',jsonb_build_object('type','tender-elimination','actor',eliminated_id));
   end if;
   select value->>'id' into winner from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false) limit 1;
- elsif s->'rules'->>'gameType'='knockout' then
+ elsif s->'rules'->>'gameType'='knockout' and s->'event'->>'type' is distinct from 'forfeit' then
+  select value->>'id',(value->>'roundScore')::int into eliminated_id,eliminated_score
+  from jsonb_array_elements(s->'players')
+  where not coalesce((value->>'eliminated')::boolean,false)
+  order by (value->>'roundScore')::int desc,value->>'id' limit 1;
+  select coalesce(jsonb_agg(jsonb_build_object('id',value->>'id','name',value->>'name','score',(value->>'roundScore')::int,'eliminated',value->>'id'=eliminated_id) order by (value->>'roundScore')::int desc,value->>'id'),'[]'::jsonb)
+  into tally from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false);
+  if eliminated_id is null then raise exception 'Knockout table has no active players'; end if;
   i:=0;
   for p in select value from jsonb_array_elements(s->'players') loop
-   if (p->>'total')::int>=(s->'rules'->>'targetScore')::int then s:=jsonb_set(s,array['players',i::text,'eliminated'],'true'); end if;
+   if p->>'id'=eliminated_id then s:=jsonb_set(s,array['players',i::text,'eliminated'],'true'); end if;
    i:=i+1;
   end loop;
-  select count(*) into alive from jsonb_array_elements(s->'players') where not (value->>'eliminated')::boolean;
+  select count(*) into alive from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false);
   if alive>1 then
-   select jsonb_agg(value-'hand'-'roundScore') into roster from jsonb_array_elements(s->'players') where not (value->>'eliminated')::boolean;
-   declare fresh_round jsonb; eliminated_round jsonb; begin
-    fresh_round:=arena_private.deal(roster,s->'rules',(s->>'round')::int+1);
-    select coalesce(jsonb_agg(value||'{"hand":[]}'::jsonb),'[]') into eliminated_round from jsonb_array_elements(s->'players') where (value->>'eliminated')::boolean;
-    return fresh_round||jsonb_build_object('players',(fresh_round->'players')||eliminated_round,'message','Round complete. Scores added; the next round is dealt.');
-   end;
+   return s||jsonb_build_object('status','round-complete','winner',winner,'deadline',null,'knockoutTally',tally,
+    'message',(select value->>'name' from jsonb_array_elements(s->'players') where value->>'id'=eliminated_id limit 1)||' was eliminated with '||eliminated_score||' points. Start the next round when ready.',
+    'event',jsonb_build_object('type','knockout-round-complete','actor',eliminated_id));
   end if;
-  select value->>'id' into winner from jsonb_array_elements(s->'players') order by (value->>'total')::int,value->>'id' limit 1;
+  select value->>'id' into winner from jsonb_array_elements(s->'players') where not coalesce((value->>'eliminated')::boolean,false) limit 1;
  end if;
- if tally is not null then s:=s||jsonb_build_object('tenderTally',tally); end if;
+ if tally is not null then s:=s||jsonb_build_object(case when s->'rules'->>'gameType'='tender' then 'tenderTally' else 'knockoutTally' end,tally); end if;
  s:=s||jsonb_build_object('status','finished','winner',winner,'deadline',null);
  for p in select value from jsonb_array_elements(s->'players') loop
   insert into arena_private.results(game_id,user_id,score,won) values(gid,(p->>'id')::uuid,(p->>'total')::int,p->>'id'=winner) on conflict do nothing;
@@ -1134,7 +1169,7 @@ create or replace function public.arena(action text,input jsonb default '{}') re
 language plpgsql security definer set search_path=public,arena_private,pg_temp as $$
 declare uid uuid:=auth.uid(); r public.rooms; t public.tournaments; gid uuid; g arena_private.games; ps jsonb; out jsonb; cfg jsonb; n int; seat_no int; code text; nm text; req uuid; prior jsonb; lock_key text; i int; roster jsonb; active_matches jsonb; completed_matches jsonb;
 begin
- if action='health' then return '{"schemaVersion":3}'::jsonb; end if;
+ if action='health' then return '{"schemaVersion":4}'::jsonb; end if;
  if uid is null then raise exception 'Sign in to continue'; end if;
  if jsonb_typeof(input)<>'object' or octet_length(input::text)>16000 then raise exception 'Invalid request'; end if;
  -- Shared scope lock prevents joins, starts and tournament advancement racing.
@@ -1219,6 +1254,10 @@ begin
    select id into gid from arena_private.games where room_id=r.id order by updated_at desc limit 1;
    out:=jsonb_build_object('id',r.id,'code',r.code,'name',r.name,'host',r.host_id,'me',uid,'maxPlayers',r.max_players,'rules',r.rule_config,'status',r.status,'players',coalesce(ps,'[]'),'game',gid);
   end if;
+ elsif action='nextRound' then
+  gid:=(input->>'game')::uuid;
+  perform arena_private.start_knockout_round(gid,uid,(input->>'version')::int);
+  out:=arena_private.view_game(gid,uid);
  elsif action='react' then
   gid:=(input->>'game')::uuid;
   perform arena_private.view_game(gid,uid);
@@ -1280,7 +1319,7 @@ begin
   from arena_private.games hg
   left join public.rooms hr on hr.id=hg.room_id
   left join lateral (select p.value from jsonb_array_elements(hg.state->'players') with ordinality as p(value,turn_index) where p.turn_index=(hg.state->>'turn')::int+1) turn_player on true
-  where hg.state->>'status'='running' and exists(select 1 from jsonb_array_elements(hg.state->'players') p where p->>'id'=uid::text);
+  where hg.state->>'status' in ('running','round-complete') and exists(select 1 from jsonb_array_elements(hg.state->'players') p where p->>'id'=uid::text);
   select coalesce(jsonb_agg(jsonb_build_object('game_id',rr.game_id,'score',rr.score,'won',rr.won,'created_at',rr.created_at,'tournament_id',gg.tournament_id,'room_id',gg.room_id,'room_code',hr.code,'room_name',hr.name,'round',gg.round_no,'winner_id',gg.state->>'winner','winner_name',winner_player.name,'mode',gg.state->'rules'->>'gameType') order by rr.created_at desc),'[]'::jsonb) into completed_matches
   from arena_private.results rr
   join arena_private.games gg on gg.id=rr.game_id

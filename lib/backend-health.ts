@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+const REQUIRED_SCHEMA_VERSION = 4;
 export async function backendHealth() {
  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -7,7 +8,7 @@ export async function backendHealth() {
     const client = createClient(url, key, { auth: { persistSession: false }, global: { fetch: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(5000) }) } });
     const { data, error } = await client.rpc('arena', { action: 'health', input: {} });
     const schemaVersion = data?.schemaVersion ?? null;
-    const migrationRequired = !error && schemaVersion !== 2;
+    const migrationRequired = !error && schemaVersion !== REQUIRED_SCHEMA_VERSION;
     return { configured: true, database: !error && !migrationRequired, schemaVersion, status: error ? (error.code === 'PGRST202' ? 'migration_required' : 'connection_failed') : migrationRequired ? 'migration_required' : 'ready' };
   } catch { return { configured: true, database: false, status: 'connection_failed', schemaVersion: null }; }
 }

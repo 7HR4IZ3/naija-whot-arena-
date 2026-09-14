@@ -8,7 +8,7 @@ import { SavedRules } from "@/components/saved-rules";
 import { InviteJoin } from "@/components/invite-join";
 import { RoomSettingsPanel } from "@/components/room-settings";
 import { ScreenHeader } from "@/components/screen-header";
-import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, MAX_ROOM_PLAYERS, MIN_ROOM_PLAYERS, validateRoomConfiguration, type RoomSettings } from "@/lib/rules";
+import { DEFAULT_ROOM_SETTINGS, gameTypeLabel, maxPlayersForInitialHand, MAX_ROOM_PLAYERS, MIN_ROOM_PLAYERS, validateRoomConfiguration, type RoomSettings } from "@/lib/rules";
 import { createRoom, joinRoom } from "@/lib/supabase/actions";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -102,11 +102,11 @@ export function LobbyView() {
             <div className="form-field">
               <label htmlFor="max-players">Maximum players</label>
               <input aria-describedby="room-cap-help" aria-invalid={Boolean(configurationError)} className="form-input" id="max-players" inputMode="numeric" max={MAX_ROOM_PLAYERS} min={MIN_ROOM_PLAYERS} onChange={(event) => { setError(""); setMaxPlayers(event.target.value); }} required step="1" type="number" value={maxPlayers} />
-              <span className="form-helper" id="room-cap-help">{MIN_ROOM_PLAYERS}–{MAX_ROOM_PLAYERS} seats. The opening hand is checked against the deck.</span>
+              <span className="form-helper" id="room-cap-help">{MIN_ROOM_PLAYERS}–{MAX_ROOM_PLAYERS} seats. With {settings.initialHand || "this"} cards per player, the deck currently supports up to {maxPlayersForInitialHand(settings.initialHand, settings.whotEnabled)} seats.</span>
             </div>
             <div className="form-field">
               <label>Settings preview</label>
-              <p className="form-helper">{gameTypeLabel(settings.gameType, settings.targetScore)} · {settings.initialHand}-card deal · {settings.drawMode === "one" ? "draw one" : "draw until playable"}</p>
+              <p className="form-helper">{gameTypeLabel(settings.gameType)} · {settings.initialHand}-card deal · {settings.drawMode === "one" ? "draw one" : "draw until playable"}</p>
             </div>
           </div>
           <SavedRules settings={settings} players={Number(maxPlayers)} onLoad={setSettings}/>

@@ -4,7 +4,7 @@ The web app uses Supabase Auth, Postgres RPCs, and Realtime. It does not require
 
 ## Database
 
-Run `supabase/setup.sql` in the Supabase SQL Editor. This combines the base schema, secure arena migration, custom room sizing, and Tender mode in one script and works for a fresh project or the existing base schema. If you already ran the earlier setup, run `supabase/migrations/20260911_custom_rooms_tender.sql` once. The migration revokes old direct game writes and installs authenticated, transactional actions. Do not rerun the old schema on its own after setup.
+Run `supabase/setup.sql` in the Supabase SQL Editor. This combines the base schema, secure arena migration, custom room sizing, Tender mode, and the knockout round flow in one script and works for a fresh project or the existing base schema. If you already ran the earlier setup, apply `supabase/migrations/20260911_custom_rooms_tender.sql` and then `supabase/migrations/20260912_match_experience.sql` in order. The latter upgrades the RPC to schema version 4, including the shared knockout round-result state and manual next-round transition. Do not rerun the old schema on its own after setup.
 
 Enable the Supabase Cron integration (`pg_cron`), then run `supabase/migrations/20260911_timers.sql`. This advances expired turns even when every player closes the app. Without Cron, an active participant processes expiration; late moves are still rejected by the database. The five-second sweep means unattended transitions can occur up to five seconds after the deadline.
 
@@ -22,7 +22,7 @@ NEXT_PUBLIC_SITE_URL=https://naija-whot-arena.vercel.app
 
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is supported as an alternative key variable. Never use a service-role/secret key as a public key.
 
-Visit `/setup` or `/api/health`. Success is `ready` with schemaVersion `2`. `migration_required` means the URL/key reached Supabase but the RPC is missing. A schema version below 2 means the custom room and Tender migration still needs to be applied. `connection_failed` can indicate an invalid URL/key, paused project, or unreachable API.
+Visit `/setup` or `/api/health`. Success is `ready` with schemaVersion `4`. `migration_required` means the Supabase connection responded but the current arena migration is not installed. A schema version below 4 means the database is missing the current Tender and knockout round functions. `connection_failed` can indicate an invalid URL/key, paused project, or unreachable API.
 
 ## Authentication
 
@@ -38,10 +38,10 @@ Configure custom SMTP for signup confirmation and password-reset emails. The def
 
 - Rooms: 2–8 players; custom opening hands from 3–12 cards with deck-capacity validation, atomic capacity enforcement, all-player ready checks, host-only settings/start, host transfer when leaving a waiting room, rematch lobby.
 - Game actions: server shuffle/deal; private hands and deck; validated play/draw/forfeit/timeout; stale version rejection and duplicate-request protection.
-- Rules: classic, target-score knockout, or Tender elimination; enabled/disabled action cards, stack/block/no defence, draw-one/until-playable, clockwise/anticlockwise, Whot calls, scoring, and target-score knockout series.
+- Rules: classic, round-based knockout elimination, or Tender elimination; enabled/disabled action cards, stack/block/no defence, draw-one/until-playable, clockwise/anticlockwise, Whot calls, and scoring.
 - Whot disabled removes the five Whot cards. Last-card calls are automatic announcements. Final action-card effects apply before scoring; an empty hand ends the round.
 - If the market is blocked for every active player, the default rule counts hand points: the highest total loses, with equal totals resolved by stable player-ID order. Hosts can instead choose to recycle the pot, keeping the facing card and shuffling everything underneath into a new market. In Tender mode with point scoring, the active player with the lowest hand total is eliminated, then the remaining players receive a fresh deal; this repeats until one player remains.
-- Tournaments: host-controlled registration/start; random pairs, single elimination, automatic byes, series matches if knockout is selected, next-round creation after all current matches finish, champion.
+- Tournaments: host-controlled registration/start; random pairs, single elimination, automatic byes, next-round creation after all current matches finish, champion.
 - Reconnection restores the server snapshot. Turn timers continue while away. Untimed matches wait for a player to return or forfeit.
 - Results and leaderboard count completed matches/series, not individual knockout rounds. Byes are not counted as played wins.
 
