@@ -49,7 +49,7 @@ export function RoomSettingsPanel({
               <label htmlFor={`${idPrefix}-game-type`}>Game type</label>
               <select className="form-select" id={`${idPrefix}-game-type`} onChange={(event) => onChange({ gameType: event.target.value as RoomSettings["gameType"] })} value={settings.gameType}>
                 <option value="classic">Classic round</option>
-                <option value="knockout">Knockout scoring</option>
+                <option value="knockout">Knockout elimination</option>
                 <option value="tender">Tender elimination</option>
               </select>
               <span className="form-helper">{gameTypeDescription(settings.gameType)}</span>

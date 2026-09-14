@@ -191,7 +191,7 @@ recycleFixture.deck=[]; recycleFixture.discard=[{id:'recycle-under',suit:'circle
 await db.query('update arena_private.games set state=$1 where id=$2',[JSON.stringify(recycleFixture),recycleStart.game]);
 const recycleView=await rpc(users[0],'draw',{game:recycleStart.game,version:1});
 assert.equal(recycleView.status,'running'); assert.equal(recycleView.top.id,'recycle-top'); assert.equal(recycleView.marketCount,0); assert.equal(recycleView.hand.some(c=>c.id==='recycle-under'),true);
-console.log(`PASS: ${simulationMoves} validated moves across 12 full games; 2–5 players, knockout, draw modes, defence modes, deck conservation, pick-three and expired turns`);
+console.log(`PASS: ${simulationMoves} validated moves across 12 full games; 2–8 players, knockout, draw modes, defence modes, deck conservation, pick-three and expired turns`);
 console.log('PASS: custom 2–8 player room capacity, hand-size validation, and Tender elimination/redeal');
 console.log('PASS: empty-market scoring and optional pot recycling');
 console.log('PASS: schema, auth checks, ready/host/capacity guards, private hands, stale moves, idempotency, results, five-player bracket and legacy permission isolation');

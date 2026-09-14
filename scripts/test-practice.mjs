@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const require=createRequire(import.meta.url);
 const ts=require('typescript');
 require.extensions['.ts']=(module,file)=>module._compile(ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,file);
-const {dealPractice,practiceMove,botChoice}=require('../lib/practice-engine.ts');
+const {dealPractice,practiceMove,practiceNextRound,botChoice}=require('../lib/practice-engine.ts');
 const {DEFAULT_ROOM_SETTINGS}=require('../lib/rules.ts');
 let moves=0,games=0,finished=0;
 for(const size of [2,3,4]) for(const mode of ['classic','tender','knockout']) for(const difficulty of ['easy','standard','hard']) for(const market of ['score','recycle']) {
@@ -12,7 +12,12 @@ for(const size of [2,3,4]) for(const mode of ['classic','tender','knockout']) fo
  let s=dealPractice(size,rules);
  assert.equal(practiceMove(s,'outsider'),s);
  assert.equal(practiceMove(s,'0','missing-card'),s);
- for(let step=0;step<1500 && !s.winner;step++){
+ for(let step=0;step<1500 && s.status!=="finished";step++){
+  if(s.status==="round-complete"){
+   assert.ok(s.knockoutTally?.some(player=>player.eliminated),`${size}/${mode}/${difficulty}/${market} missing knockout tally`);
+   s=practiceNextRound(s);
+   continue;
+  }
   const cards=[...s.deck,...s.discard,...s.players.flatMap(p=>p.hand)];
   assert.equal(cards.length,rules.whotEnabled?54:49,'card conservation');
   assert.equal(new Set(cards.map(c=>c.id)).size,cards.length,'duplicate cards');

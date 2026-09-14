@@ -150,7 +150,7 @@ function Modes() {
             <tr><td>Quick match</td><td>2–8</td><td>Jump into a live table, using the platform&apos;s default classic settings.</td></tr>
             <tr><td>Private table</td><td>2–8</td><td>Host sets seats, hand size, and house rules, shares a code, waits for players, then starts.</td></tr>
             <tr><td>Tournament</td><td>8–64</td><td>Players register before the start time; the host closes registration and runs elimination rounds.</td></tr>
-            <tr><td>Knockout league</td><td>Any bracket</td><td>Play multiple rounds; the highest cumulative score is eliminated at the configured threshold, commonly 100.</td></tr>
+            <tr><td>Knockout league</td><td>Any bracket</td><td>Play normal rounds; after each win, count every active hand and eliminate the player with the highest total.</td></tr>
             <tr><td>Tender</td><td>2–8</td><td>When the market is exhausted, count active hands, eliminate the lowest total, and deal the remaining players again until one remains.</td></tr>
             <tr><td>Star / advanced</td><td>2–5</td><td>Optional table preset with star doubling, finish calls, and stricter turn timers.</td></tr>
           </tbody>

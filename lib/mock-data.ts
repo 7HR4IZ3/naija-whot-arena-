@@ -13,7 +13,7 @@ export const MOCK_ROOMS = [
     host: "Mide",
     players: 2,
     maxPlayers: 4,
-    tags: ["100 Knockout", "10 sec"],
+    tags: ["Knockout elimination", "10 sec"],
     status: "Open",
     initials: ["M", "Z"],
   },

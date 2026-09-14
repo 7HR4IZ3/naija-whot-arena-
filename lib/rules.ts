@@ -70,7 +70,7 @@ export const ROOM_PRESETS: Array<{ id: RoomPreset; label: string; description: s
   {
     id: "knockout",
     label: "Knockout",
-    description: "Scores build to a target.",
+    description: "The highest hand total is eliminated after each round.",
     settings: { ...DEFAULT_ROOM_SETTINGS, gameType: "knockout" },
   },
 ];

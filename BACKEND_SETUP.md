@@ -53,4 +53,4 @@ Configure custom SMTP for signup confirmation and password-reset emails. The def
 PGLITE_PATH=/absolute/path/to/node_modules/@electric-sql/pglite/dist/index.js node scripts/test-backend.mjs
 ```
 
-This tests SQL execution, authorization, idempotency, two-to-five-player games, knockout, penalties, deck conservation, timers, and a five-player tournament. It uses a local simulated auth schema, not real accounts. Live SMTP delivery and a two-browser Supabase game still require the actual migration and signed-in users.
+This tests SQL execution, authorization, idempotency, two-to-eight-player games, knockout, penalties, deck conservation, timers, and a five-player tournament. It uses a local simulated auth schema, not real accounts. Live SMTP delivery and a two-browser Supabase game still require the actual migration and signed-in users.
